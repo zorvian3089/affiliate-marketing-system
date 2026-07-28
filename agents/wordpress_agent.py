@@ -10,7 +10,8 @@ from datetime import datetime
 from agents.base_agent import BaseAgent
 from database.database import get_db
 from database.models import ContentPiece, ContentStatus
-from config.settings import WORDPRESS_SITE, WORDPRESS_TOKEN
+from config.settings import WORDPRESS_SITE
+from api.routes.wp_auth import get_active_token
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class WordPressAgent(BaseAgent):
         return {"platform": "wordpress", "articles_published": published}
 
     def _is_configured(self) -> bool:
-        return bool(WORDPRESS_TOKEN and WORDPRESS_SITE)
+        return bool(get_active_token() and WORDPRESS_SITE)
 
     def _publish_pending_articles(self) -> int:
         with get_db() as db:
@@ -107,7 +108,7 @@ class WordPressAgent(BaseAgent):
         resp = requests.post(
             f"{WP_API_BASE}/sites/{WORDPRESS_SITE}/posts/new",
             headers={
-                "Authorization": f"Bearer {WORDPRESS_TOKEN}",
+                "Authorization": f"Bearer {get_active_token()}",
                 "Content-Type": "application/json",
             },
             json={
@@ -126,7 +127,13 @@ class WordPressAgent(BaseAgent):
             data = resp.json()
             return data.get("URL", "")
 
-        logger.error(f"WordPress API {resp.status_code}: {resp.text[:400]}")
+        if resp.status_code == 401:
+            logger.error(
+                "WordPress token expired or invalid. "
+                "Refresh it at: https://affiliate-marketing-system-7994.onrender.com/wp-auth"
+            )
+        else:
+            logger.error(f"WordPress API {resp.status_code}: {resp.text[:400]}")
         return None
 
     def _inject_ctas(self, html: str, title: str, hoplink: str = None) -> str:

@@ -8,10 +8,8 @@ import logging
 import requests
 from datetime import datetime, timezone
 from agents.base_agent import BaseAgent
-from config.settings import (
-    BLUESKY_HANDLE, BLUESKY_APP_PASSWORD,
-    WORDPRESS_SITE, WORDPRESS_TOKEN
-)
+from config.settings import BLUESKY_HANDLE, BLUESKY_APP_PASSWORD, WORDPRESS_SITE
+from api.routes.wp_auth import get_active_token
 
 logger = logging.getLogger(__name__)
 BSKY_API = "https://bsky.social/xrpc"
@@ -79,13 +77,14 @@ class BlueskyAgent(BaseAgent):
             return {"posted": 0, "error": str(e)}
 
     def _get_latest_wp_article(self) -> dict | None:
-        if not (WORDPRESS_SITE and WORDPRESS_TOKEN):
+        token = get_active_token()
+        if not (WORDPRESS_SITE and token):
             return None
         try:
             resp = requests.get(
                 f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/posts"
                 f"?number=1&status=publish&fields=title,URL,excerpt",
-                headers={"Authorization": f"Bearer {WORDPRESS_TOKEN}"},
+                headers={"Authorization": f"Bearer {token}"},
                 timeout=15,
             )
             posts = resp.json().get("posts", [])

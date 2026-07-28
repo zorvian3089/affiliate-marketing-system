@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.routes import dashboard, agents, content, links, webhooks
 from api.routes.dashboard import products_router
+from api.routes import wp_auth
 from agents.orchestrator import get_orchestrator
 from database.database import init_db
 from config.settings import APP_HOST, APP_PORT
@@ -63,6 +64,7 @@ app.include_router(agents.router)
 app.include_router(content.router)
 app.include_router(links.router)
 app.include_router(webhooks.router)
+app.include_router(wp_auth.router)
 
 # Serve dashboard UI
 dashboard_dir = Path(__file__).parent.parent / "dashboard"
