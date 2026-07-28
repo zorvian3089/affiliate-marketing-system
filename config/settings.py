@@ -102,6 +102,10 @@ ENABLE_TWITTER = os.getenv("ENABLE_TWITTER", "false").lower() == "true"
 ENABLE_REDDIT = os.getenv("ENABLE_REDDIT", "false").lower() == "true"
 ENABLE_EMAIL = os.getenv("ENABLE_EMAIL", "false").lower() == "true"
 
+# Bluesky
+BLUESKY_HANDLE = os.getenv("BLUESKY_HANDLE", "")
+BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
+
 # WordPress.com publishing
 WORDPRESS_SITE = os.getenv("WORDPRESS_SITE", "healthreviewshub5.wordpress.com")
 WORDPRESS_TOKEN = os.getenv("WORDPRESS_TOKEN", "")

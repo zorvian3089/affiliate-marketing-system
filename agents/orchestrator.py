@@ -22,6 +22,7 @@ from agents.clickbank_agent import ClickBankAgent
 from agents.customer_acquisition_agent import CustomerAcquisitionAgent
 from agents.blogger_agent import BloggerAgent
 from agents.wordpress_agent import WordPressAgent
+from agents.bluesky_agent import BlueskyAgent
 from database.database import init_db
 from config.settings import (
     CONTENT_CREATION_INTERVAL, SOCIAL_POST_INTERVAL, EMAIL_CAMPAIGN_INTERVAL,
@@ -66,6 +67,7 @@ class Orchestrator:
             ("content_creation", self._job_content_creation, CONTENT_CREATION_INTERVAL),
             ("blogger_publish", self._job_blogger, 86400),  # once per day — safe pace
             ("wordpress_publish", self._job_wordpress, 86400),  # once per day
+            ("bluesky_post", self._job_bluesky, 86400),         # once per day
             ("seo_audit", self._job_seo, SEO_AUDIT_INTERVAL),
             ("social_media", self._job_social_media, SOCIAL_POST_INTERVAL),
             ("email_sequences", self._job_email, EMAIL_CAMPAIGN_INTERVAL),
@@ -137,6 +139,9 @@ class Orchestrator:
     def _job_wordpress(self):
         self._safe_run("WordPress", lambda: WordPressAgent().run())
 
+    def _job_bluesky(self):
+        self._safe_run("Bluesky", lambda: BlueskyAgent().run())
+
     def _safe_run(self, name: str, fn):
         with self._lock:
             try:
@@ -164,6 +169,7 @@ class Orchestrator:
             "acquisition": self._job_customer_acquisition,
             "blogger": self._job_blogger,
             "wordpress": self._job_wordpress,
+            "bluesky": self._job_bluesky,
         }
         job = agents.get(agent_name.lower())
         if not job:
