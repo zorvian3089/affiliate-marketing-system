@@ -1,0 +1,31 @@
+# Core
+anthropic>=0.40.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.0
+pydantic>=2.9.0
+
+# Database
+sqlalchemy>=2.0.36
+aiosqlite>=0.20.0
+
+# Scheduler
+apscheduler>=3.10.4
+
+# HTTP
+requests>=2.32.3
+httpx>=0.27.0
+
+# Email
+# (uses stdlib smtplib — no extra package needed)
+
+# Social Media (install what you need)
+tweepy>=4.14.0          # Twitter/X
+praw>=7.7.1             # Reddit
+
+# Blogger publishing
+markdown>=3.7
+
+# Optional: Analytics
+# pandas>=2.2.0         # for advanced analytics
+# matplotlib>=3.9.0     # for chart generation

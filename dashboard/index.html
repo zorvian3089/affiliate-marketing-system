@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Affiliate AI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --sidebar-bg: #0f172a;
+    --sidebar-text: #94a3b8;
+    --sidebar-active: #10b981;
+    --accent: #10b981;
+    --accent2: #059669;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --success: #10b981;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; min-height: 100vh; font-size: 14px; }
+
+  /* Layout */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 240px; background: var(--sidebar-bg); padding: 0; flex-shrink: 0; position: fixed; top: 0; bottom: 0; left: 0; overflow-y: auto; display: flex; flex-direction: column; }
+  .main { margin-left: 240px; flex: 1; padding: 24px 28px; max-width: 1400px; }
+
+  /* Sidebar */
+  .logo-area { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo { font-size: 18px; font-weight: 800; color: white; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); margin-top: 2px; }
+  .blog-pill { margin-top: 12px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 8px 12px; }
+  .blog-pill a { color: var(--accent); font-size: 11px; text-decoration: none; font-weight: 600; }
+  .blog-pill a:hover { text-decoration: underline; }
+  .blog-pill-label { color: var(--sidebar-text); font-size: 10px; margin-bottom: 2px; }
+
+  .nav-group { padding: 16px 12px 4px; }
+  .nav-label { font-size: 10px; color: rgba(148,163,184,0.5); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; padding: 0 8px; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; color: var(--sidebar-text); font-size: 13px; font-weight: 500; transition: all 0.15s; border-radius: 8px; margin-bottom: 1px; }
+  .nav-item:hover { color: white; background: rgba(255,255,255,0.06); }
+  .nav-item.active { color: white; background: rgba(16,185,129,0.15); }
+  .nav-item.active .nav-icon { color: var(--accent); }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sidebar-text); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .dot.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+
+  /* Top bar */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .page-title { font-size: 20px; font-weight: 700; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Buttons */
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-blue { background: var(--blue); color: white; }
+  .btn-blue:hover { background: #2563eb; }
+  .btn-ghost { background: white; color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Alert banner */
+  .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+  .alert-text { flex: 1; }
+  .alert-text strong { display: block; font-weight: 700; margin-bottom: 1px; }
+
+  /* Stat cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: var(--shadow); }
+  .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 26px; font-weight: 800; color: var(--text); margin: 6px 0 4px; line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+  .stat-icon { font-size: 22px; float: right; margin-top: -2px; }
+  .stat-card.green .stat-value { color: var(--success); }
+  .stat-card.blue .stat-value { color: var(--blue); }
+  .stat-card.purple .stat-value { color: var(--purple); }
+  .stat-card.orange .stat-value { color: var(--warning); }
+
+  /* Cards */
+  .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  /* Table */
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th { text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .table td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .table tr:last-child td { border-bottom: none; }
+  .table tbody tr:hover td { background: #f8fafc; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+  /* Agent cards */
+  .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .agent-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+  .agent-icon { font-size: 28px; margin-bottom: 10px; }
+  .agent-name { font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .agent-desc { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  .agent-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--success); font-weight: 600; margin-bottom: 10px; }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulseAnim 2s infinite; }
+
+  /* Log entries */
+  .log-entry { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: var(--muted); font-size: 11px; font-family: monospace; flex-shrink: 0; padding-top: 1px; min-width: 70px; }
+  .log-agent { font-weight: 600; font-size: 12px; color: var(--blue); flex-shrink: 0; min-width: 130px; }
+  .log-msg { color: var(--text); font-size: 12px; flex: 1; line-height: 1.4; }
+
+  /* Pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Progress bar */
+  .progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+
+  /* Blog post preview */
+  .blog-post-item { padding: 14px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .blog-post-item:last-child { border-bottom: none; }
+  .blog-post-title { font-weight: 600; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .blog-post-meta { font-size: 11px; color: var(--muted); }
+
+  /* Affiliate link cards */
+  .link-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .link-card.active-link { border-color: #a7f3d0; background: #f0fdf4; }
+  .link-card.broken-link { border-color: #fecaca; background: #fef2f2; }
+  .link-product { font-weight: 700; font-size: 13px; }
+  .link-url { font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+  .link-status-icon { font-size: 20px; flex-shrink: 0; }
+
+  /* Toast */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; min-width: 260px; box-shadow: var(--shadow-md); animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 8px; }
+  .toast.success { border-left: 4px solid var(--success); }
+  .toast.error { border-left: 4px solid var(--danger); }
+  .toast.info { border-left: 4px solid var(--blue); }
+
+  /* Misc */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-text { font-size: 13px; }
+  .chart-container { position: relative; height: 200px; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .text-muted { color: var(--muted); }
+  .text-success { color: var(--success); }
+  .text-danger { color: var(--danger); }
+  .fw-700 { font-weight: 700; }
+  .mt-4 { margin-top: 4px; }
+  .input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; width: 100%; outline: none; transition: border-color 0.15s; }
+  .input:focus { border-color: var(--accent); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+  @keyframes pulseAnim { 0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { opacity:0.8; box-shadow: 0 0 0 4px rgba(16,185,129,0); } }
+  @keyframes slideIn { from { transform: translateX(60px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo">Affiliate<span>AI</span></div>
+      <div class="logo-sub">Automated affiliate system</div>
+      <div class="blog-pill">
+        <div class="blog-pill-label">Your Blog</div>
+        <a href="https://producttrustreview.blogspot.com" target="_blank">producttrustreview.blogspot.com ↗</a>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('revenue', this)"><span class="nav-icon">💰</span> Revenue</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Blog</div>
+      <div class="nav-item" onclick="showPage('blog', this)"><span class="nav-icon">📝</span> Blog Posts</div>
+      <div class="nav-item" onclick="showPage('content', this)"><span class="nav-icon">✍️</span> Content Queue</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Agents</div>
+      <div class="nav-item" onclick="showPage('agents', this)"><span class="nav-icon">🤖</span> All Agents</div>
+      <div class="nav-item" onclick="showPage('logs', this)"><span class="nav-icon">📋</span> Activity Logs</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Monetization</div>
+      <div class="nav-item" onclick="showPage('products', this)"><span class="nav-icon">🛍️</span> Products</div>
+      <div class="nav-item" onclick="showPage('links', this)"><span class="nav-icon">🔗</span> Affiliate Links</div>
+      <div class="nav-item" onclick="showPage('email', this)"><span class="nav-icon">📧</span> Email</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <div class="dot"></div>
+        System running
+      </div>
+      <div class="status-indicator" style="margin-top:8px">
+        <div class="dot warning"></div>
+        Blogger API restricted
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="last-updated">Loading...</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">⟳ Refresh</button>
+          <button class="btn btn-primary btn-sm" onclick="runAgent('analytics')">📊 Snapshot</button>
+        </div>
+      </div>
+
+      <!-- Alert banner -->
+      <div class="alert alert-warning" id="blogger-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">
+          <strong>Blogger API Restricted</strong>
+          Google restricted API access on Jun 27. Appeal submitted — response expected in 2-3 business days. Articles are queuing up and will auto-publish once restored.
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <span class="stat-icon">💰</span>
+          <div class="stat-label">Revenue Today</div>
+          <div class="stat-value" id="revenue-today">$0</div>
+          <div class="stat-sub" id="revenue-30d">$0 this month</div>
+        </div>
+        <div class="stat-card blue">
+          <span class="stat-icon">👆</span>
+          <div class="stat-label">Clicks Today</div>
+          <div class="stat-value" id="clicks-today">0</div>
+          <div class="stat-sub" id="clicks-30d">0 this month</div>
+        </div>
+        <div class="stat-card purple">
+          <span class="stat-icon">✅</span>
+          <div class="stat-label">Conversions</div>
+          <div class="stat-value" id="conv-today">0</div>
+          <div class="stat-sub">All time</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">✍️</span>
+          <div class="stat-label">Articles Written</div>
+          <div class="stat-value" id="content-count">0</div>
+          <div class="stat-sub" id="content-published">0 published</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">📝</span>
+          <div class="stat-label">Blog Posts Live</div>
+          <div class="stat-value" style="color:var(--warning)" id="blog-live">2</div>
+          <div class="stat-sub">producttrustreview.blogspot.com</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">📧</span>
+          <div class="stat-label">Subscribers</div>
+          <div class="stat-value" id="subscriber-count">0</div>
+          <div class="stat-sub">Email list</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Revenue chart -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Revenue (30 days)</div>
+              <div class="card-sub">Waiting for first sales</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="revenue-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- System progress -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">System Progress</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Blog Setup</span>
+                <span style="font-size:12px;color:var(--success);font-weight:700">✓ Done</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:100%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">ClickBank Links</span>
+                <span style="font-size:12px;color:var(--muted)">1 / 20 products</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:5%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Articles Published</span>
+                <span style="font-size:12px;color:var(--muted)" id="pub-progress">2 / 30 target</span>
+              </div>
+              <div class="progress"><div class="progress-bar" id="pub-bar" style="width:7%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Google Indexing</span>
+                <span style="font-size:12px;color:var(--warning)">In progress (2-4 wks)</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:15%;background:var(--warning)"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">First Commission</span>
+                <span style="font-size:12px;color:var(--muted)">~Month 2-3</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:2%;background:var(--purple)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Working affiliate links -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Active Affiliate Links</div>
+            <div class="card-sub">Only these generate commissions — get more from ClickBank</div>
+          </div>
+          <a href="https://accounts.clickbank.com" target="_blank" class="btn btn-ghost btn-sm">+ Get More Links</a>
+        </div>
+        <div class="link-card active-link">
+          <div class="link-status-icon">✅</div>
+          <div style="flex:1">
+            <div class="link-product">Joint Genesis — $59 × 70% = <strong style="color:var(--success)">$41.30/sale</strong></div>
+            <div class="link-url">https://b5f4bnw7xlx9ol74p5ymq6tuf8.hop.clickbank.net</div>
+          </div>
+          <span class="badge badge-green">Working</span>
+        </div>
+        <div style="color:var(--muted);font-size:12px;padding:10px 0 0">
+          ⚡ Tip: Go to ClickBank → Affiliate Link Tools and generate encrypted hoplinks for <strong>resurge, hissecret, javaburn</strong> — paste them here to add.
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Agent Activity</div>
+          <button class="btn btn-ghost btn-sm" onclick="showPage('logs', document.querySelector('.nav-item:nth-child(2)'))">View All</button>
+        </div>
+        <div id="recent-logs"><div class="empty-state"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- BLOG PAGE -->
+    <div id="page-blog" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Blog Posts</div>
+          <div class="page-sub">producttrustreview.blogspot.com</div>
+        </div>
+        <div class="topbar-actions">
+          <a href="https://producttrustreview.blogspot.com" target="_blank" class="btn btn-ghost btn-sm">View Blog ↗</a>
+          <a href="https://www.blogger.com/blog/posts/7795913841638669795" target="_blank" class="btn btn-primary btn-sm">Blogger Dashboard ↗</a>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">
+          <strong>API Restricted — Manual Publishing Active</strong>
+          Google restricted auto-publishing. You can still publish manually via Blogger Dashboard. Appeal response expected Mon/Tue.
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Published Articles</div></div>
+          <div class="blog-post-item">
+            <div>
+              <div class="blog-post-title">Java Burn Review — Does It Really Work?</div>
+              <div class="blog-post-meta">Published Jun 27, 2026 · Joint Genesis link</div>
+            </div>
+            <a href="https://producttrustreview.blogspot.com" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
+          </div>
+          <div class="blog-post-item">
+            <div>
+              <div class="blog-post-title">Ikaria Lean Belly Juice — Honest Review</div>
+              <div class="blog-post-meta">Published Jun 27, 2026 · Joint Genesis link</div>
+            </div>
+            <a href="https://producttrustreview.blogspot.com" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Articles Ready to Publish</div>
+            <span class="badge badge-blue" id="queue-count">Loading...</span>
+          </div>
+          <div id="queue-list"><div class="empty-state"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT PAGE -->
+    <div id="page-content" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Content Queue</div>
+          <div class="page-sub">AI-generated articles waiting to publish</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="runAgent('content')">✍️ Write More Articles</button>
+      </div>
+      <div class="card">
+        <table class="table">
+          <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Keyword</th><th>Words</th></tr></thead>
+          <tbody id="content-table"><tr><td colspan="5" style="text-align:center;padding:20px"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AGENTS PAGE -->
+    <div id="page-agents" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">AI Agents</div>
+          <div class="page-sub">10 autonomous agents running 24/7 in the background</div>
+        </div>
+      </div>
+      <div class="agents-grid" id="agents-grid"></div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Scheduled Jobs</div></div>
+        <table class="table">
+          <thead><tr><th>Agent</th><th>Next Run</th><th>Status</th></tr></thead>
+          <tbody id="jobs-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LOGS PAGE -->
+    <div id="page-logs" class="page">
+      <div class="topbar"><div class="page-title">Activity Logs</div></div>
+      <div class="card">
+        <div id="logs-list"><div class="empty-state"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS PAGE -->
+    <div id="page-products" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">ClickBank Products</div>
+          <div class="page-sub">20 products seeded — 1 with working affiliate link</div>
+        </div>
+        <a href="https://accounts.clickbank.com" target="_blank" class="btn btn-primary btn-sm">Generate Links on ClickBank ↗</a>
+      </div>
+      <div class="card">
+        <table class="table" id="products-table">
+          <thead><tr><th>Product</th><th>Niche</th><th>Commission</th><th>Price</th><th>Commission/Sale</th><th>Link</th></tr></thead>
+          <tbody id="products-body"><tr><td colspan="6" style="text-align:center;padding:20px"><div class="spinner"></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LINKS PAGE -->
+    <div id="page-links" class="page">
+      <div class="topbar">
+        <div class="page-title">Affiliate Links</div>
+      </div>
+      <div class="card">
+        <table class="table">
+          <thead><tr><th>Short Code</th><th>Clicks</th><th>Status</th><th>Destination</th></tr></thead>
+          <tbody id="links-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REVENUE PAGE -->
+    <div id="page-revenue" class="page">
+      <div class="topbar"><div class="page-title">Revenue Analytics</div></div>
+      <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-label">Total Revenue (30d)</div><div class="stat-value" id="rev-total">$0</div></div>
+        <div class="stat-card blue"><div class="stat-label">Avg Daily</div><div class="stat-value" id="rev-daily">$0</div></div>
+        <div class="stat-card"><div class="stat-label">Conversion Rate</div><div class="stat-value" id="rev-cvr">0%</div></div>
+        <div class="stat-card"><div class="stat-label">Total Clicks (30d)</div><div class="stat-value" id="rev-clicks">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Revenue Over Time</div></div>
+        <div class="chart-container" style="height:260px"><canvas id="revenue-chart-full"></canvas></div>
+      </div>
+    </div>
+
+    <!-- EMAIL PAGE -->
+    <div id="page-email" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Email Marketing</div>
+          <div class="page-sub">Manage subscribers and campaigns</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Add Subscriber</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input class="input" id="sub-email" placeholder="Email address">
+            <input class="input" id="sub-name" placeholder="First name">
+            <input class="input" id="sub-niche" placeholder="Niche (e.g. weight loss)">
+            <button class="btn btn-primary" onclick="addSubscriber()">Add Subscriber</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Generate Email Sequence</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input class="input" id="seq-niche" placeholder="Niche">
+            <input class="input" id="seq-product" placeholder="Product name to promote">
+            <input class="input" id="seq-url" placeholder="Product affiliate URL">
+            <button class="btn btn-primary" onclick="createSequence()">Generate 7-Email Sequence</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+let revenueChart = null, revenueChartFull = null;
+
+// Navigation
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  const pageLoaders = {
+    dashboard: refreshDashboard,
+    agents: loadAgents,
+    content: loadContent,
+    logs: loadLogs,
+    links: loadLinks,
+    revenue: loadRevenue,
+    products: loadProducts,
+    blog: loadBlog,
+  };
+  if (pageLoaders[name]) pageLoaders[name]();
+}
+
+// Toast
+function toast(msg, type = 'info') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type] || ''}</span> ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// API
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// Run agent
+async function runAgent(name) {
+  toast(`Starting ${name} agent...`, 'info');
+  try {
+    await api('/api/agents/run', { method: 'POST', body: JSON.stringify({ agent: name }) });
+    toast(`${name} agent started!`, 'success');
+  } catch (e) {
+    toast(`Failed: ${e.message}`, 'error');
+  }
+}
+
+// Dashboard
+async function refreshDashboard() {
+  document.getElementById('last-updated').textContent = 'Refreshing...';
+  try {
+    const [overview, chart, logs] = await Promise.all([
+      api('/api/dashboard/overview'),
+      api('/api/dashboard/revenue-chart'),
+      api('/api/dashboard/agent-logs?limit=8'),
+    ]);
+    document.getElementById('revenue-today').textContent = '$' + (overview.revenue?.today || 0).toFixed(2);
+    document.getElementById('revenue-30d').textContent = '$' + (overview.revenue?.last_30_days || 0).toFixed(2) + ' this month';
+    document.getElementById('clicks-today').textContent = overview.traffic?.clicks_today || 0;
+    document.getElementById('clicks-30d').textContent = (overview.traffic?.clicks_30d || 0) + ' this month';
+    document.getElementById('conv-today').textContent = overview.traffic?.conversions_today || 0;
+    document.getElementById('content-count').textContent = overview.content?.total || 0;
+    const pub = overview.content?.published || 0;
+    document.getElementById('content-published').textContent = pub + ' published';
+    document.getElementById('pub-progress').textContent = pub + ' / 30 target';
+    document.getElementById('pub-bar').style.width = Math.min(100, (pub / 30) * 100) + '%';
+    document.getElementById('subscriber-count').textContent = overview.email?.subscribers || 0;
+    renderRevenueChart(chart, 'revenue-chart');
+    renderLogs(logs, 'recent-logs', true);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('last-updated').textContent = 'Error — is server running?';
+  }
+}
+
+function renderRevenueChart(data, canvasId) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const existing = canvasId === 'revenue-chart' ? revenueChart : revenueChartFull;
+  if (existing) existing.destroy();
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.date),
+      datasets: [{ label: 'Revenue ($)', data: data.map(d => d.revenue || 0),
+        borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)',
+        fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#10b981' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', maxTicksLimit: 7, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { color: '#94a3b8', callback: v => '$' + v, font: { size: 11 } }, grid: { color: '#f1f5f9' } }
+      }
+    }
+  });
+  if (canvasId === 'revenue-chart') revenueChart = chart; else revenueChartFull = chart;
+}
+
+// Blog
+async function loadBlog() {
+  try {
+    const data = await api('/api/content/?limit=10&status=draft');
+    const items = data.items || [];
+    document.getElementById('queue-count').textContent = items.length + ' queued';
+    const list = document.getElementById('queue-list');
+    if (!items.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-text">No articles queued yet — agents are writing now</div></div>';
+      return;
+    }
+    list.innerHTML = items.slice(0, 5).map(c => `
+      <div class="blog-post-item">
+        <div>
+          <div class="blog-post-title">${c.title}</div>
+          <div class="blog-post-meta">${c.word_count || 0} words · ${c.content_type || 'article'}</div>
+        </div>
+        <span class="badge badge-yellow">Queued</span>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+// Content
+async function loadContent() {
+  try {
+    const data = await api('/api/content/?limit=100');
+    const tbody = document.getElementById('content-table');
+    if (!data.items?.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">No content yet — click "Write More Articles" to start</td></tr>';
+      return;
+    }
+    const badges = { published: 'badge-green', draft: 'badge-gray', failed: 'badge-red', scheduled: 'badge-yellow' };
+    tbody.innerHTML = data.items.map(c => `
+      <tr>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" title="${c.title}">${c.title}</td>
+        <td><span class="badge badge-blue">${c.content_type || 'article'}</span></td>
+        <td><span class="badge ${badges[c.status] || 'badge-gray'}">${c.status || 'draft'}</span></td>
+        <td style="color:#64748b;font-size:12px">${c.target_keyword || '—'}</td>
+        <td>${c.word_count || '—'}</td>
+      </tr>`).join('');
+  } catch(e) { toast('Failed to load content', 'error'); }
+}
+
+// Agents
+const AGENTS = [
+  { key: 'niche', name: 'Niche Research', icon: '🔍', desc: 'Finds profitable niches & buyer keywords' },
+  { key: 'product', name: 'Product Discovery', icon: '🛍️', desc: 'Finds high-commission products' },
+  { key: 'content', name: 'Content Writer', icon: '✍️', desc: 'Writes SEO articles every 6 hours' },
+  { key: 'blogger', name: 'Blog Publisher', icon: '📝', desc: 'Publishes articles to Blogger (1/day)' },
+  { key: 'seo', name: 'SEO Agent', icon: '📈', desc: 'Keyword research & optimization' },
+  { key: 'social', name: 'Social Media', icon: '📱', desc: 'Posts to social platforms' },
+  { key: 'email', name: 'Email Marketing', icon: '📧', desc: 'Manages sequences & broadcasts' },
+  { key: 'links', name: 'Link Manager', icon: '🔗', desc: 'Tracks & cloaks affiliate links' },
+  { key: 'analytics', name: 'Analytics', icon: '📊', desc: 'Tracks revenue & conversions hourly' },
+  { key: 'acquisition', name: 'Customer Acquisition', icon: '🎯', desc: 'Generates traffic content' },
+];
+
+async function loadAgents() {
+  document.getElementById('agents-grid').innerHTML = AGENTS.map(a => `
+    <div class="agent-card">
+      <div class="agent-icon">${a.icon}</div>
+      <div class="agent-name">${a.name}</div>
+      <div class="agent-desc">${a.desc}</div>
+      <div class="agent-status"><div class="pulse"></div> Running</div>
+      <button class="btn btn-ghost btn-sm" style="width:100%" onclick="runAgent('${a.key}')">▶ Run Now</button>
+    </div>`).join('');
+  try {
+    const jobs = await api('/api/agents/status');
+    document.getElementById('jobs-table').innerHTML = jobs.map(j => `
+      <tr>
+        <td style="font-weight:500">${j.id}</td>
+        <td style="color:#64748b">${j.next_run ? new Date(j.next_run).toLocaleString() : 'N/A'}</td>
+        <td><span class="badge badge-green">Scheduled</span></td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+// Logs
+async function loadLogs() {
+  try {
+    const logs = await api('/api/dashboard/agent-logs?limit=100');
+    renderLogs(logs, 'logs-list', false);
+  } catch(e) {}
+}
+
+function renderLogs(logs, id, limit) {
+  const el = document.getElementById(id);
+  if (!logs?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-text">No activity yet</div></div>'; return; }
+  const items = limit ? logs.slice(0, 8) : logs;
+  el.innerHTML = items.map(l => `
+    <div class="log-entry">
+      <span class="log-time">${l.started ? new Date(l.started).toLocaleTimeString() : ''}</span>
+      <span class="log-agent">${l.agent}</span>
+      <span class="badge ${l.status === 'success' ? 'badge-green' : 'badge-red'}" style="flex-shrink:0">${l.status}</span>
+      <span class="log-msg">${l.summary || l.task || ''}</span>
+      ${l.duration ? `<span style="color:#94a3b8;font-size:11px;flex-shrink:0">${l.duration.toFixed(1)}s</span>` : ''}
+    </div>`).join('');
+}
+
+// Links
+async function loadLinks() {
+  try {
+    const links = await api('/api/links');
+    const tbody = document.getElementById('links-table');
+    if (!links?.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#64748b">No links yet</td></tr>'; return; }
+    tbody.innerHTML = links.map(l => `
+      <tr>
+        <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:12px">${l.short_code}</code></td>
+        <td>${l.total_clicks || 0}</td>
+        <td><span class="badge ${l.is_active ? 'badge-green' : 'badge-red'}">${l.is_active ? 'Active' : 'Disabled'}</span></td>
+        <td style="color:#64748b;font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.cloaked_url || '—'}</td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+// Products
+async function loadProducts() {
+  try {
+    const data = await api('/api/products');
+    const tbody = document.getElementById('products-body');
+    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#64748b">No products</td></tr>'; return; }
+    tbody.innerHTML = data.map(p => {
+      const hasLink = p.affiliate_url && !p.affiliate_url.includes('localhost') && p.affiliate_url.startsWith('https://');
+      const commission = p.price && p.commission_rate ? (p.price * p.commission_rate / 100).toFixed(2) : '—';
+      return `<tr>
+        <td style="font-weight:500">${p.name}</td>
+        <td style="color:#64748b;font-size:12px">${p.niche || '—'}</td>
+        <td>${p.commission_rate || '—'}%</td>
+        <td>$${p.price || '—'}</td>
+        <td style="font-weight:700;color:var(--success)">$${commission}</td>
+        <td><span class="badge ${hasLink ? 'badge-green' : 'badge-gray'}">${hasLink ? '✓ Ready' : 'Need link'}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// Revenue
+async function loadRevenue() {
+  try {
+    const [summary, chart] = await Promise.all([
+      api('/api/agents/analytics/summary?days=30'),
+      api('/api/dashboard/revenue-chart?days=30'),
+    ]);
+    document.getElementById('rev-total').textContent = '$' + (summary.total_revenue || 0).toFixed(2);
+    document.getElementById('rev-daily').textContent = '$' + (summary.avg_daily_revenue || 0).toFixed(2);
+    document.getElementById('rev-cvr').textContent = (summary.conversion_rate || 0).toFixed(2) + '%';
+    document.getElementById('rev-clicks').textContent = summary.total_clicks || 0;
+    renderRevenueChart(chart, 'revenue-chart-full');
+  } catch(e) {}
+}
+
+// Email
+async function addSubscriber() {
+  const email = document.getElementById('sub-email').value;
+  const niche = document.getElementById('sub-niche').value;
+  if (!email || !niche) return toast('Email and niche are required', 'error');
+  try {
+    await api('/api/agents/email/subscribers', { method: 'POST',
+      body: JSON.stringify({ email, first_name: document.getElementById('sub-name').value, niche, source: 'manual' }) });
+    toast('Subscriber added!', 'success');
+    document.getElementById('sub-email').value = '';
+  } catch(e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+async function createSequence() {
+  const niche = document.getElementById('seq-niche').value;
+  const product = document.getElementById('seq-product').value;
+  if (!niche || !product) return toast('Niche and product required', 'error');
+  toast('Generating 7-email sequence...', 'info');
+  try {
+    const r = await api('/api/agents/email/sequence', { method: 'POST',
+      body: JSON.stringify({ niche, product_name: product, product_url: document.getElementById('seq-url').value, campaign_name: `${niche} - ${product}` }) });
+    toast(`Created ${r.emails} email sequence!`, 'success');
+  } catch(e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// Init
+refreshDashboard();
+setInterval(refreshDashboard, 60000);
+</script>
+</body>
+</html>

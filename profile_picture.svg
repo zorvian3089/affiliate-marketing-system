@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Circle background -->
+  <circle cx="100" cy="100" r="100" fill="#1a7f5a"/>
+
+  <!-- White cross / health symbol -->
+  <rect x="85" y="45" width="30" height="90" rx="8" fill="white" opacity="0.95"/>
+  <rect x="55" y="75" width="90" height="30" rx="8" fill="white" opacity="0.95"/>
+
+  <!-- Small leaf accent -->
+  <ellipse cx="140" cy="55" rx="12" ry="7" fill="#a8e6cf" opacity="0.85" transform="rotate(-35 140 55)"/>
+  <line x1="133" y1="60" x2="148" y2="48" stroke="#1a7f5a" stroke-width="1.5"/>
+
+  <!-- Bottom text -->
+  <text x="100" y="158" font-family="Georgia, serif" font-size="13" font-weight="bold"
+        fill="white" text-anchor="middle" letter-spacing="1">HEALTH</text>
+  <text x="100" y="174" font-family="Georgia, serif" font-size="10"
+        fill="#a8e6cf" text-anchor="middle" letter-spacing="2">REVIEWS HUB</text>
+</svg>

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: affiliate-marketing-system
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: WORDPRESS_SITE
+        value: healthreviewshub5.wordpress.com
+      - key: WORDPRESS_CLIENT_ID
+        value: "143041"
+      - key: WORDPRESS_TOKEN
+        sync: false
+      - key: WORDPRESS_CLIENT_SECRET
+        sync: false
+      - key: HOPLINK_JAVABURN
+        value: https://45ac8nryoc61fg08luqaycxi1a.hop.clickbank.net
