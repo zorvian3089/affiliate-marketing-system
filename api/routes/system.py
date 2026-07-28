@@ -14,7 +14,7 @@ from config.settings import (
     ANTHROPIC_API_KEY, BLUESKY_HANDLE, BLUESKY_APP_PASSWORD,
     CLICKBANK_NICKNAME, WORDPRESS_SITE,
 )
-from api.routes.wp_auth import get_active_token
+from utils.token_store import get_active_token
 
 router = APIRouter(tags=["system"])
 

@@ -9,7 +9,7 @@ import requests
 from datetime import datetime, timezone
 from agents.base_agent import BaseAgent
 from config.settings import BLUESKY_HANDLE, BLUESKY_APP_PASSWORD, WORDPRESS_SITE
-from api.routes.wp_auth import get_active_token
+from utils.token_store import get_active_token
 
 logger = logging.getLogger(__name__)
 BSKY_API = "https://bsky.social/xrpc"

@@ -86,7 +86,7 @@ def get_top_performers(db: Session = Depends(get_db_session)):
 @router.get("/published-posts")
 def get_published_posts(db: Session = Depends(get_db_session)):
     """All published articles from DB + live view counts from WordPress.com."""
-    from api.routes.wp_auth import get_active_token
+    from utils.token_store import get_active_token
 
     posts = (
         db.query(ContentPiece)
@@ -136,7 +136,7 @@ def get_published_posts(db: Session = Depends(get_db_session)):
 @router.get("/site-stats")
 def get_site_stats():
     """WordPress.com site-wide traffic stats."""
-    from api.routes.wp_auth import get_active_token
+    from utils.token_store import get_active_token
     token = get_active_token()
     if not token:
         return {"views_today": 0, "views_week": 0, "views_total": 0, "available": False}

@@ -4,16 +4,13 @@ Provides a one-click OAuth flow to refresh the WordPress.com token.
 The /wp-auth page handles the implicit grant redirect and saves the new token.
 """
 import os
-import re
 import requests
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse
 from config.settings import WORDPRESS_CLIENT_ID, WORDPRESS_SITE
+from utils.token_store import get_active_token, set_active_token
 
 router = APIRouter(tags=["wp-auth"])
-
-# Runtime token cache (survives within the same process, lost on restart)
-_runtime_token: str = ""
 
 OAUTH_URL = (
     f"https://public-api.wordpress.com/oauth2/authorize"
@@ -24,17 +21,8 @@ OAUTH_URL = (
 )
 
 
-def get_active_token() -> str:
-    """Return the best available token: runtime cache → env var."""
-    return _runtime_token or os.getenv("WORDPRESS_TOKEN", "")
-
-
 @router.get("/wp-auth", response_class=HTMLResponse)
 def wp_auth_page():
-    """
-    OAuth callback page — reads access_token from URL fragment via JS
-    and saves it via the /api/wp/token endpoint.
-    """
     return HTMLResponse(content="""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,10 +52,8 @@ def wp_auth_page():
   <div class="status" id="status"></div>
 </div>
 <script>
-  // Replace placeholder with real OAuth URL
   document.getElementById('auth-btn').href = "OAUTH_URL_JS";
 
-  // If redirected back with token in URL fragment, extract and save it
   const hash = window.location.hash;
   if (hash && hash.includes('access_token')) {
     const params = new URLSearchParams(hash.slice(1));
@@ -88,13 +74,13 @@ def wp_auth_page():
         el.style.display = 'block';
         if (data.ok) {
           el.className = 'status ok';
-          el.innerHTML = '✅ Token saved successfully! Publishing will resume automatically.<br><br>' +
-            '<strong>Important:</strong> Also update <code>WORDPRESS_TOKEN</code> in Render environment variables ' +
-            'so the token survives a server restart.';
+          el.innerHTML = '✅ Token saved! Publishing will resume automatically.<br><br>' +
+            '<strong>Important:</strong> Also update <code>WORDPRESS_TOKEN</code> in Render ' +
+            'environment variables so the token survives a server restart.';
           document.getElementById('title').textContent = '✅ Token Refreshed!';
         } else {
           el.className = 'status err';
-          el.textContent = '❌ Failed to save token: ' + (data.error || 'unknown error');
+          el.textContent = '❌ Failed: ' + (data.error || 'unknown error');
         }
       })
       .catch(e => {
@@ -112,13 +98,10 @@ def wp_auth_page():
 
 @router.post("/api/wp/token")
 def save_wp_token(payload: dict):
-    """Save a new WordPress token to the runtime cache."""
-    global _runtime_token
     token = (payload.get("token") or "").strip()
     if not token:
         return JSONResponse({"ok": False, "error": "token is empty"}, status_code=400)
 
-    # Validate token by calling WordPress API
     try:
         resp = requests.get(
             f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/posts?number=1",
@@ -130,21 +113,16 @@ def save_wp_token(payload: dict):
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
-    _runtime_token = token
-
-    # Try to persist to Render env vars if API key is available
+    set_active_token(token)
     _try_update_render_env(token)
-
     return {"ok": True, "message": "Token saved. Publishing will resume on next run."}
 
 
 @router.get("/api/wp/status")
 def wp_token_status():
-    """Check if the current WordPress token is valid."""
     token = get_active_token()
     if not token:
         return {"valid": False, "reason": "No token configured"}
-
     try:
         resp = requests.get(
             f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/posts?number=1",
@@ -162,7 +140,6 @@ def wp_token_status():
 
 
 def _try_update_render_env(token: str):
-    """Attempt to update WORDPRESS_TOKEN in Render env vars via Render API."""
     render_key = os.getenv("RENDER_API_KEY", "")
     service_id = os.getenv("RENDER_SERVICE_ID", "srv-d9kgs8qjnfac73ampuv0")
     if not render_key:

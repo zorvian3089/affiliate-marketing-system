@@ -11,7 +11,7 @@ from agents.base_agent import BaseAgent
 from database.database import get_db
 from database.models import ContentPiece, ContentStatus
 from config.settings import WORDPRESS_SITE
-from api.routes.wp_auth import get_active_token
+from utils.token_store import get_active_token
 
 logger = logging.getLogger(__name__)
 
