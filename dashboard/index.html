@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Affiliate AI — Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root {
     --bg: #f0f4f8;
@@ -50,7 +51,12 @@
   .nav-item:hover { color: white; background: rgba(255,255,255,0.06); }
   .nav-item.active { color: white; background: rgba(16,185,129,0.15); }
   .nav-item.active .nav-icon { color: var(--accent); }
-  .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+  .nav-icon { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; fill: none; }
+  .nav-icon svg { width: 16px; height: 16px; }
+  .stat-icon svg { width: 22px; height: 22px; opacity: 0.55; }
+  .agent-icon svg { width: 32px; height: 32px; }
+  .alert-icon svg { width: 20px; height: 20px; }
+  .link-status-icon svg { width: 20px; height: 20px; }
 
   .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
   .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sidebar-text); }
@@ -201,27 +207,27 @@
 
     <div class="nav-group">
       <div class="nav-label">Overview</div>
-      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon">📊</span> Dashboard</div>
-      <div class="nav-item" onclick="showPage('revenue', this)"><span class="nav-icon">💰</span> Revenue</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('revenue', this)"><span class="nav-icon"><i data-lucide="dollar-sign"></i></span> Revenue</div>
     </div>
 
     <div class="nav-group">
       <div class="nav-label">Blog</div>
-      <div class="nav-item" onclick="showPage('blog', this)"><span class="nav-icon">📝</span> Blog Posts</div>
-      <div class="nav-item" onclick="showPage('content', this)"><span class="nav-icon">✍️</span> Content Queue</div>
+      <div class="nav-item" onclick="showPage('blog', this)"><span class="nav-icon"><i data-lucide="file-text"></i></span> Blog Posts</div>
+      <div class="nav-item" onclick="showPage('content', this)"><span class="nav-icon"><i data-lucide="edit-3"></i></span> Content Queue</div>
     </div>
 
     <div class="nav-group">
       <div class="nav-label">Agents</div>
-      <div class="nav-item" onclick="showPage('agents', this)"><span class="nav-icon">🤖</span> All Agents</div>
-      <div class="nav-item" onclick="showPage('logs', this)"><span class="nav-icon">📋</span> Activity Logs</div>
+      <div class="nav-item" onclick="showPage('agents', this)"><span class="nav-icon"><i data-lucide="cpu"></i></span> All Agents</div>
+      <div class="nav-item" onclick="showPage('logs', this)"><span class="nav-icon"><i data-lucide="activity"></i></span> Activity Logs</div>
     </div>
 
     <div class="nav-group">
       <div class="nav-label">Monetization</div>
-      <div class="nav-item" onclick="showPage('products', this)"><span class="nav-icon">🛍️</span> Products</div>
-      <div class="nav-item" onclick="showPage('links', this)"><span class="nav-icon">🔗</span> Affiliate Links</div>
-      <div class="nav-item" onclick="showPage('email', this)"><span class="nav-icon">📧</span> Email</div>
+      <div class="nav-item" onclick="showPage('products', this)"><span class="nav-icon"><i data-lucide="shopping-bag"></i></span> Products</div>
+      <div class="nav-item" onclick="showPage('links', this)"><span class="nav-icon"><i data-lucide="link"></i></span> Affiliate Links</div>
+      <div class="nav-item" onclick="showPage('email', this)"><span class="nav-icon"><i data-lucide="mail"></i></span> Email</div>
     </div>
 
     <div class="sidebar-footer">
@@ -247,14 +253,14 @@
           <div class="page-sub" id="last-updated">Loading...</div>
         </div>
         <div class="topbar-actions">
-          <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">⟳ Refresh</button>
-          <button class="btn btn-primary btn-sm" onclick="runAgent('analytics')">📊 Snapshot</button>
+          <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()"><i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Refresh</button>
+          <button class="btn btn-primary btn-sm" onclick="runAgent('analytics')"><i data-lucide="bar-chart-2" style="width:13px;height:13px"></i> Snapshot</button>
         </div>
       </div>
 
       <!-- Alert banner -->
       <div class="alert alert-warning" id="blogger-alert">
-        <div class="alert-icon">⚠️</div>
+        <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
         <div class="alert-text">
           <strong>Blogger API Restricted</strong>
           Google restricted API access on Jun 27. Appeal submitted — response expected in 2-3 business days. Articles are queuing up and will auto-publish once restored.
@@ -264,37 +270,37 @@
       <!-- Stats -->
       <div class="stats-grid">
         <div class="stat-card green">
-          <span class="stat-icon">💰</span>
+          <span class="stat-icon"><i data-lucide="dollar-sign"></i></span>
           <div class="stat-label">Revenue Today</div>
           <div class="stat-value" id="revenue-today">$0</div>
           <div class="stat-sub" id="revenue-30d">$0 this month</div>
         </div>
         <div class="stat-card blue">
-          <span class="stat-icon">👆</span>
+          <span class="stat-icon"><i data-lucide="mouse-pointer-click"></i></span>
           <div class="stat-label">Clicks Today</div>
           <div class="stat-value" id="clicks-today">0</div>
           <div class="stat-sub" id="clicks-30d">0 this month</div>
         </div>
         <div class="stat-card purple">
-          <span class="stat-icon">✅</span>
+          <span class="stat-icon"><i data-lucide="trending-up"></i></span>
           <div class="stat-label">Conversions</div>
           <div class="stat-value" id="conv-today">0</div>
           <div class="stat-sub">All time</div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">✍️</span>
+          <span class="stat-icon"><i data-lucide="pen-tool"></i></span>
           <div class="stat-label">Articles Written</div>
           <div class="stat-value" id="content-count">0</div>
           <div class="stat-sub" id="content-published">0 published</div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">📝</span>
+          <span class="stat-icon"><i data-lucide="globe"></i></span>
           <div class="stat-label">Blog Posts Live</div>
           <div class="stat-value" style="color:var(--warning)" id="blog-live">2</div>
           <div class="stat-sub">producttrustreview.blogspot.com</div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">📧</span>
+          <span class="stat-icon"><i data-lucide="users"></i></span>
           <div class="stat-label">Subscribers</div>
           <div class="stat-value" id="subscriber-count">0</div>
           <div class="stat-sub">Email list</div>
@@ -370,7 +376,7 @@
           <a href="https://accounts.clickbank.com" target="_blank" class="btn btn-ghost btn-sm">+ Get More Links</a>
         </div>
         <div class="link-card active-link">
-          <div class="link-status-icon">✅</div>
+          <div class="link-status-icon" style="color:var(--success)"><i data-lucide="check-circle"></i></div>
           <div style="flex:1">
             <div class="link-product">Joint Genesis — $59 × 70% = <strong style="color:var(--success)">$41.30/sale</strong></div>
             <div class="link-url">https://b5f4bnw7xlx9ol74p5ymq6tuf8.hop.clickbank.net</div>
@@ -406,7 +412,7 @@
       </div>
 
       <div class="alert alert-warning">
-        <div class="alert-icon">⚠️</div>
+        <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
         <div class="alert-text">
           <strong>API Restricted — Manual Publishing Active</strong>
           Google restricted auto-publishing. You can still publish manually via Blogger Dashboard. Appeal response expected Mon/Tue.
@@ -449,7 +455,7 @@
           <div class="page-title">Content Queue</div>
           <div class="page-sub">AI-generated articles waiting to publish</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="runAgent('content')">✍️ Write More Articles</button>
+        <button class="btn btn-primary btn-sm" onclick="runAgent('content')"><i data-lucide="edit-3" style="width:13px;height:13px"></i> Write More Articles</button>
       </div>
       <div class="card">
         <table class="table">
@@ -589,11 +595,13 @@ function showPage(name, el) {
 
 // Toast
 function toast(msg, type = 'info') {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const icons = { success: 'check-circle', error: 'x-circle', info: 'info', warning: 'alert-triangle' };
+  const colors = { success: 'var(--success)', error: 'var(--danger)', info: 'var(--blue)', warning: 'var(--warning)' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type] || ''}</span> ${msg}`;
+  el.innerHTML = `<i data-lucide="${icons[type]}" style="width:15px;height:15px;color:${colors[type]};flex-shrink:0"></i> ${msg}`;
   document.getElementById('toast-container').appendChild(el);
+  lucide.createIcons({ nodes: [el] });
   setTimeout(() => el.remove(), 4000);
 }
 
@@ -715,27 +723,28 @@ async function loadContent() {
 
 // Agents
 const AGENTS = [
-  { key: 'niche', name: 'Niche Research', icon: '🔍', desc: 'Finds profitable niches & buyer keywords' },
-  { key: 'product', name: 'Product Discovery', icon: '🛍️', desc: 'Finds high-commission products' },
-  { key: 'content', name: 'Content Writer', icon: '✍️', desc: 'Writes SEO articles every 6 hours' },
-  { key: 'blogger', name: 'Blog Publisher', icon: '📝', desc: 'Publishes articles to Blogger (1/day)' },
-  { key: 'seo', name: 'SEO Agent', icon: '📈', desc: 'Keyword research & optimization' },
-  { key: 'social', name: 'Social Media', icon: '📱', desc: 'Posts to social platforms' },
-  { key: 'email', name: 'Email Marketing', icon: '📧', desc: 'Manages sequences & broadcasts' },
-  { key: 'links', name: 'Link Manager', icon: '🔗', desc: 'Tracks & cloaks affiliate links' },
-  { key: 'analytics', name: 'Analytics', icon: '📊', desc: 'Tracks revenue & conversions hourly' },
-  { key: 'acquisition', name: 'Customer Acquisition', icon: '🎯', desc: 'Generates traffic content' },
+  { key: 'niche', name: 'Niche Research', icon: 'search', desc: 'Finds profitable niches & buyer keywords' },
+  { key: 'product', name: 'Product Discovery', icon: 'shopping-bag', desc: 'Finds high-commission products' },
+  { key: 'content', name: 'Content Writer', icon: 'pen-tool', desc: 'Writes SEO articles every 6 hours' },
+  { key: 'blogger', name: 'Blog Publisher', icon: 'upload-cloud', desc: 'Publishes articles to WordPress (1/day)' },
+  { key: 'seo', name: 'SEO Agent', icon: 'trending-up', desc: 'Keyword research & optimization' },
+  { key: 'social', name: 'Social Media', icon: 'share-2', desc: 'Posts to social platforms' },
+  { key: 'email', name: 'Email Marketing', icon: 'mail', desc: 'Manages sequences & broadcasts' },
+  { key: 'links', name: 'Link Manager', icon: 'link', desc: 'Tracks & cloaks affiliate links' },
+  { key: 'analytics', name: 'Analytics', icon: 'bar-chart-2', desc: 'Tracks revenue & conversions hourly' },
+  { key: 'acquisition', name: 'Customer Acquisition', icon: 'target', desc: 'Generates traffic content' },
 ];
 
 async function loadAgents() {
   document.getElementById('agents-grid').innerHTML = AGENTS.map(a => `
     <div class="agent-card">
-      <div class="agent-icon">${a.icon}</div>
+      <div class="agent-icon" style="color:var(--accent);margin-bottom:10px"><i data-lucide="${a.icon}"></i></div>
       <div class="agent-name">${a.name}</div>
       <div class="agent-desc">${a.desc}</div>
       <div class="agent-status"><div class="pulse"></div> Running</div>
       <button class="btn btn-ghost btn-sm" style="width:100%" onclick="runAgent('${a.key}')">▶ Run Now</button>
     </div>`).join('');
+  lucide.createIcons();
   try {
     const jobs = await api('/api/agents/status');
     document.getElementById('jobs-table').innerHTML = jobs.map(j => `
@@ -847,6 +856,7 @@ async function createSequence() {
 }
 
 // Init
+lucide.createIcons();
 refreshDashboard();
 setInterval(refreshDashboard, 60000);
 </script>
