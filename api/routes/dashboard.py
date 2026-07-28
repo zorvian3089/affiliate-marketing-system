@@ -1,11 +1,13 @@
+import requests as _requests
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database.database import get_db_session
 from database.models import (
-    AgentLog, RevenueSnapshot, ContentPiece, EmailSubscriber,
+    AgentLog, RevenueSnapshot, ContentPiece, ContentStatus, EmailSubscriber,
     Product, Niche, SocialPost, AffiliateLink
 )
 from agents.analytics_agent import AnalyticsAgent
+from config.settings import WORDPRESS_SITE
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -79,6 +81,85 @@ def get_agent_logs(limit: int = 50, db: Session = Depends(get_db_session)):
 def get_top_performers(db: Session = Depends(get_db_session)):
     agent = AnalyticsAgent()
     return agent.get_top_performers()
+
+
+@router.get("/published-posts")
+def get_published_posts(db: Session = Depends(get_db_session)):
+    """All published articles from DB + live view counts from WordPress.com."""
+    from api.routes.wp_auth import get_active_token
+
+    posts = (
+        db.query(ContentPiece)
+        .filter(ContentPiece.status == ContentStatus.published)
+        .order_by(ContentPiece.published_at.desc())
+        .all()
+    )
+
+    # Fetch live top-post view stats from WordPress.com (best effort)
+    wp_views: dict[str, int] = {}
+    token = get_active_token()
+    if token and WORDPRESS_SITE:
+        try:
+            resp = _requests.get(
+                f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/stats/top-posts"
+                f"?period=month&num=100",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=8,
+            )
+            if resp.ok:
+                for item in resp.json().get("top-posts", []):
+                    url = (item.get("href") or "").rstrip("/")
+                    if url:
+                        wp_views[url] = item.get("views", 0)
+        except Exception:
+            pass
+
+    result = []
+    for p in posts:
+        url = (p.published_url or "").rstrip("/")
+        platform = "WordPress" if "wordpress.com" in url else "Blogger" if "blogspot.com" in url else "Other"
+        live_views = wp_views.get(url, p.views or 0)
+        result.append({
+            "id": p.id,
+            "title": p.title,
+            "url": p.published_url,
+            "platform": platform,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
+            "views": live_views,
+            "keyword": p.target_keyword or "",
+            "word_count": p.word_count or 0,
+        })
+
+    return result
+
+
+@router.get("/site-stats")
+def get_site_stats():
+    """WordPress.com site-wide traffic stats."""
+    from api.routes.wp_auth import get_active_token
+    token = get_active_token()
+    if not token:
+        return {"views_today": 0, "views_week": 0, "views_total": 0, "available": False}
+
+    try:
+        resp = _requests.get(
+            f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/stats/",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=8,
+        )
+        if not resp.ok:
+            return {"views_today": 0, "views_week": 0, "views_total": 0, "available": False}
+
+        s = resp.json().get("stats", {})
+        return {
+            "views_today": s.get("views_today", 0),
+            "views_week": s.get("views_this_week", 0),
+            "views_total": s.get("views", 0),
+            "visitors_today": s.get("visitors_today", 0),
+            "available": True,
+        }
+    except Exception:
+        return {"views_today": 0, "views_week": 0, "views_total": 0, "available": False}
 
 
 products_router = APIRouter(tags=["products"])

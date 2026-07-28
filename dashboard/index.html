@@ -224,7 +224,8 @@
 
     <div class="nav-group">
       <div class="nav-label">Blog</div>
-      <div class="nav-item" onclick="showPage('blog', this)"><span class="nav-icon"><i data-lucide="file-text"></i></span> Blog Posts</div>
+      <div class="nav-item" onclick="showPage('posts', this)"><span class="nav-icon"><i data-lucide="bar-chart"></i></span> Published Posts</div>
+      <div class="nav-item" onclick="showPage('blog', this)"><span class="nav-icon"><i data-lucide="file-text"></i></span> Blog Queue</div>
       <div class="nav-item" onclick="showPage('content', this)"><span class="nav-icon"><i data-lucide="edit-3"></i></span> Content Queue</div>
     </div>
 
@@ -313,6 +314,12 @@
           <div class="stat-label">Subscribers</div>
           <div class="stat-value" id="subscriber-count">0</div>
           <div class="stat-sub">Email list</div>
+        </div>
+        <div class="stat-card blue">
+          <span class="stat-icon"><i data-lucide="eye"></i></span>
+          <div class="stat-label">Views Today</div>
+          <div class="stat-value" id="views-today">—</div>
+          <div class="stat-sub" id="views-week">— this week</div>
         </div>
       </div>
 
@@ -405,6 +412,67 @@
           <button class="btn btn-ghost btn-sm" onclick="showPage('logs', document.querySelector('.nav-item:nth-child(2)'))">View All</button>
         </div>
         <div id="recent-logs"><div class="empty-state"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- PUBLISHED POSTS PAGE -->
+    <div id="page-posts" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Published Posts</div>
+          <div class="page-sub">All articles live on WordPress &amp; Blogger — with view counts</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadPosts()"><i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Refresh</button>
+      </div>
+
+      <!-- Mini stats row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:16px">
+        <div class="stat-card blue">
+          <div class="stat-label">Total Posts</div>
+          <div class="stat-value" id="posts-total">—</div>
+          <div class="stat-sub">All platforms</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Total Views</div>
+          <div class="stat-value" id="posts-views">—</div>
+          <div class="stat-sub">WordPress.com</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Views Today</div>
+          <div class="stat-value" id="posts-today">—</div>
+          <div class="stat-sub" id="posts-week">— this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">On WordPress</div>
+          <div class="stat-value" id="posts-wp">—</div>
+          <div class="stat-sub">healthreviewshub5</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">On Blogger</div>
+          <div class="stat-value" id="posts-bl">—</div>
+          <div class="stat-sub">producttrustreview</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="posts-table-wrap">
+          <table class="table" id="posts-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Platform</th>
+                <th>Published</th>
+                <th style="text-align:right">Views</th>
+                <th>Keyword</th>
+                <th>Words</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="posts-body">
+              <tr><td colspan="7" style="text-align:center;padding:24px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -599,6 +667,7 @@ function showPage(name, el) {
     revenue: loadRevenue,
     products: loadProducts,
     blog: loadBlog,
+    posts: loadPosts,
   };
   if (pageLoaders[name]) pageLoaders[name]();
 }
@@ -638,10 +707,11 @@ async function runAgent(name) {
 async function refreshDashboard() {
   document.getElementById('last-updated').textContent = 'Refreshing...';
   try {
-    const [overview, chart, logs] = await Promise.all([
+    const [overview, chart, logs, siteStats] = await Promise.all([
       api('/api/dashboard/overview'),
       api('/api/dashboard/revenue-chart'),
       api('/api/dashboard/agent-logs?limit=8'),
+      api('/api/dashboard/site-stats'),
     ]);
     document.getElementById('revenue-today').textContent = '$' + (overview.revenue?.today || 0).toFixed(2);
     document.getElementById('revenue-30d').textContent = '$' + (overview.revenue?.last_30_days || 0).toFixed(2) + ' this month';
@@ -654,6 +724,13 @@ async function refreshDashboard() {
     document.getElementById('pub-progress').textContent = pub + ' / 30 target';
     document.getElementById('pub-bar').style.width = Math.min(100, (pub / 30) * 100) + '%';
     document.getElementById('subscriber-count').textContent = overview.email?.subscribers || 0;
+    if (siteStats?.available) {
+      document.getElementById('views-today').textContent = (siteStats.views_today || 0).toLocaleString();
+      document.getElementById('views-week').textContent = (siteStats.views_week || 0).toLocaleString() + ' this week';
+    } else {
+      document.getElementById('views-today').textContent = '—';
+      document.getElementById('views-week').textContent = 'Token needed';
+    }
     renderRevenueChart(chart, 'revenue-chart');
     renderLogs(logs, 'recent-logs', true);
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -686,6 +763,62 @@ function renderRevenueChart(data, canvasId) {
     }
   });
   if (canvasId === 'revenue-chart') revenueChart = chart; else revenueChartFull = chart;
+}
+
+// Published Posts
+async function loadPosts() {
+  try {
+    const [posts, stats] = await Promise.all([
+      api('/api/dashboard/published-posts'),
+      api('/api/dashboard/site-stats'),
+    ]);
+
+    // mini stat cards
+    const wpPosts = posts.filter(p => p.platform === 'WordPress');
+    const blPosts = posts.filter(p => p.platform === 'Blogger');
+    const totalViews = posts.reduce((s, p) => s + (p.views || 0), 0);
+    document.getElementById('posts-total').textContent = posts.length;
+    document.getElementById('posts-views').textContent = stats.available ? (stats.views_total || totalViews).toLocaleString() : totalViews.toLocaleString();
+    document.getElementById('posts-today').textContent = stats.available ? (stats.views_today || 0).toLocaleString() : '—';
+    document.getElementById('posts-week').textContent = stats.available ? (stats.views_week || 0).toLocaleString() + ' this week' : 'Token needed for live stats';
+    document.getElementById('posts-wp').textContent = wpPosts.length;
+    document.getElementById('posts-bl').textContent = blPosts.length;
+
+    // table
+    const tbody = document.getElementById('posts-body');
+    if (!posts.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No published posts yet — agents are writing articles now</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = posts.map(p => {
+      const date = p.published_at ? new Date(p.published_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const badge = p.platform === 'WordPress'
+        ? '<span class="badge badge-blue">WordPress</span>'
+        : p.platform === 'Blogger'
+        ? '<span class="badge badge-green">Blogger</span>'
+        : `<span class="badge">${p.platform}</span>`;
+      const views = (p.views || 0) > 0
+        ? `<strong style="color:var(--blue)">${p.views.toLocaleString()}</strong>`
+        : '<span style="color:var(--muted)">0</span>';
+      const link = p.url
+        ? `<a href="${p.url}" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>`
+        : '—';
+      const kw = p.keyword ? `<span style="font-size:11px;color:var(--muted)">${p.keyword.slice(0,30)}</span>` : '—';
+      const words = p.word_count ? `${p.word_count.toLocaleString()}` : '—';
+      return `<tr>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.title}">${p.title}</td>
+        <td>${badge}</td>
+        <td style="white-space:nowrap;color:var(--muted);font-size:12px">${date}</td>
+        <td style="text-align:right">${views}</td>
+        <td>${kw}</td>
+        <td style="color:var(--muted);font-size:12px">${words}</td>
+        <td>${link}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('posts-body').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--danger)">Failed to load posts</td></tr>';
+  }
 }
 
 // Blog
