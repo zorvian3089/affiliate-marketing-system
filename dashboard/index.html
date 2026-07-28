@@ -81,12 +81,23 @@
   .btn-sm { padding: 5px 12px; font-size: 12px; }
 
   /* Alert banner */
-  .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 12px; font-size: 13px; }
   .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .alert-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
   .alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
-  .alert-icon { font-size: 18px; flex-shrink: 0; }
+  .alert-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
   .alert-text { flex: 1; }
-  .alert-text strong { display: block; font-weight: 700; margin-bottom: 1px; }
+  .alert-text strong { display: block; font-weight: 700; margin-bottom: 2px; }
+  .alert-action { flex-shrink: 0; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; border: none; }
+  .alert-error   .alert-action { background: #991b1b; color: white; }
+  .alert-warning .alert-action { background: #92400e; color: white; }
+  .alert-info    .alert-action { background: #1e40af; color: white; }
+  .alert-dismiss { background: none; border: none; cursor: pointer; opacity: 0.5; padding: 2px 6px; font-size: 16px; line-height: 1; flex-shrink: 0; }
+  .alert-dismiss:hover { opacity: 1; }
+  #warnings-panel { margin-bottom: 8px; }
+  .warnings-healthy { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--success); font-weight: 600; padding: 10px 0; margin-bottom: 12px; }
+  .sidebar-badge { background: var(--danger); color: white; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-left: auto; }
 
   /* Stat cards */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
@@ -207,7 +218,7 @@
 
     <div class="nav-group">
       <div class="nav-label">Overview</div>
-      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Dashboard</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Dashboard <span class="sidebar-badge" id="warn-badge" style="display:none"></span></div>
       <div class="nav-item" onclick="showPage('revenue', this)"><span class="nav-icon"><i data-lucide="dollar-sign"></i></span> Revenue</div>
     </div>
 
@@ -258,12 +269,10 @@
         </div>
       </div>
 
-      <!-- Alert banner -->
-      <div class="alert alert-warning" id="blogger-alert">
-        <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
-        <div class="alert-text">
-          <strong>Blogger API Restricted</strong>
-          Google restricted API access on Jun 27. Appeal submitted — response expected in 2-3 business days. Articles are queuing up and will auto-publish once restored.
+      <!-- Dynamic warnings panel -->
+      <div id="warnings-panel">
+        <div class="warnings-healthy" style="display:none" id="warnings-healthy">
+          <i data-lucide="check-circle" style="width:16px;height:16px"></i> All systems healthy
         </div>
       </div>
 
@@ -307,20 +316,6 @@
         </div>
       </div>
 
-      <!-- WordPress Token Status -->
-      <div class="card" id="wp-token-card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <span id="wp-token-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;display:block;"></span>
-          <div>
-            <div style="font-weight:700;font-size:13px;">WordPress Token</div>
-            <div id="wp-token-msg" style="font-size:12px;color:var(--muted);">Checking…</div>
-          </div>
-        </div>
-        <a id="wp-token-btn" href="https://affiliate-marketing-system-7994.onrender.com/wp-auth" target="_blank"
-           style="padding:7px 14px;background:var(--accent);color:white;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
-          Refresh Token
-        </a>
-      </div>
 
       <div class="grid-2">
         <!-- Revenue chart -->
@@ -662,7 +657,7 @@ async function refreshDashboard() {
     renderRevenueChart(chart, 'revenue-chart');
     renderLogs(logs, 'recent-logs', true);
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-    checkWpToken();
+    loadWarnings();
   } catch (e) {
     document.getElementById('last-updated').textContent = 'Error — is server running?';
   }
@@ -780,24 +775,78 @@ async function loadLogs() {
   } catch(e) {}
 }
 
-async function checkWpToken() {
+const _dismissedWarnings = new Set(JSON.parse(sessionStorage.getItem('dismissed') || '[]'));
+
+async function loadWarnings() {
   try {
-    const s = await api('/api/wp/status');
-    const dot = document.getElementById('wp-token-dot');
-    const msg = document.getElementById('wp-token-msg');
-    if (s.valid) {
-      dot.style.background = 'var(--success)';
-      dot.style.boxShadow = '0 0 6px var(--success)';
-      msg.textContent = 'Active — WordPress publishing is working';
-      msg.style.color = 'var(--success)';
-    } else {
-      dot.style.background = 'var(--danger)';
-      dot.style.boxShadow = '0 0 6px var(--danger)';
-      msg.textContent = 'Token expired — click "Refresh Token" to fix';
-      msg.style.color = 'var(--danger)';
+    const data = await api('/api/system/warnings');
+    const panel = document.getElementById('warnings-panel');
+    const healthy = document.getElementById('warnings-healthy');
+    const badge = document.getElementById('warn-badge');
+
+    // Remove old alert items (keep the healthy row)
+    panel.querySelectorAll('.alert').forEach(el => el.remove());
+
+    const visible = (data.warnings || []).filter(w => !_dismissedWarnings.has(w.id));
+
+    if (visible.length === 0) {
+      healthy.style.display = 'flex';
+      badge.style.display = 'none';
+      lucide.createIcons();
+      return;
     }
+    healthy.style.display = 'none';
+
+    // Badge shows error count (red) or warning count (orange)
+    const errCount = data.error_count || 0;
+    if (errCount > 0) {
+      badge.style.display = 'inline';
+      badge.textContent = errCount;
+      badge.style.background = 'var(--danger)';
+    } else if (data.warning_count > 0) {
+      badge.style.display = 'inline';
+      badge.textContent = data.warning_count;
+      badge.style.background = 'var(--warning)';
+    }
+
+    visible.forEach(w => {
+      const lvl = w.level === 'error' ? 'alert-error' : w.level === 'info' ? 'alert-info' : 'alert-warning';
+      const icon = w.level === 'error' ? 'x-circle' : w.level === 'info' ? 'info' : 'alert-triangle';
+
+      let actionHtml = '';
+      if (w.action_label && w.action_url) {
+        actionHtml = `<a class="alert-action" href="${w.action_url}" target="_blank">${w.action_label}</a>`;
+      } else if (w.action_label && w.action_page) {
+        actionHtml = `<button class="alert-action" onclick="showPage('${w.action_page}', document.querySelector('.nav-item[onclick*=${w.action_page}]'))">${w.action_label}</button>`;
+      }
+
+      const div = document.createElement('div');
+      div.className = `alert ${lvl}`;
+      div.innerHTML = `
+        <div class="alert-icon"><i data-lucide="${icon}" style="width:18px;height:18px"></i></div>
+        <div class="alert-text"><strong>${w.title}</strong>${w.message}</div>
+        ${actionHtml}
+        <button class="alert-dismiss" title="Dismiss" onclick="dismissWarning('${w.id}', this.closest('.alert'))">✕</button>
+      `;
+      panel.appendChild(div);
+    });
+
+    lucide.createIcons();
   } catch(e) {
-    document.getElementById('wp-token-msg').textContent = 'Could not check token status';
+    // silently fail — don't break dashboard
+  }
+}
+
+function dismissWarning(id, el) {
+  _dismissedWarnings.add(id);
+  sessionStorage.setItem('dismissed', JSON.stringify([..._dismissedWarnings]));
+  el.remove();
+  // if none left, show healthy
+  const panel = document.getElementById('warnings-panel');
+  if (!panel.querySelector('.alert')) {
+    document.getElementById('warnings-healthy').style.display = 'flex';
+    document.getElementById('warn-badge').style.display = 'none';
+    lucide.createIcons();
   }
 }
 
@@ -894,6 +943,7 @@ async function createSequence() {
 
 // Init
 lucide.createIcons();
+loadWarnings();
 refreshDashboard();
 setInterval(refreshDashboard, 60000);
 </script>
