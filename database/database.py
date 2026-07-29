@@ -1,22 +1,33 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 from database.models import Base
 from config.settings import DATABASE_URL
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    echo=False,
-)
+_is_sqlite = DATABASE_URL.startswith("sqlite")
 
-# Enable WAL mode for SQLite — better concurrent read performance
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_connection, _):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+# PostgreSQL needs pool settings; SQLite needs check_same_thread=False
+if _is_sqlite:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, _):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,   # reconnect if connection dropped
+        echo=False,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

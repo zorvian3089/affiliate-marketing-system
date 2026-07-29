@@ -9,8 +9,10 @@ load_dotenv(BASE_DIR / ".env")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = "claude-sonnet-4-6"
 
-# Database
-DATABASE_URL = f"sqlite:///{BASE_DIR}/database/affiliate.db"
+# Database — PostgreSQL on Render (DATABASE_URL set automatically), SQLite locally
+_raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/database/affiliate.db")
+# Render gives postgres:// but SQLAlchemy requires postgresql://
+DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql://", 1)
 
 # Affiliate Networks
 AMAZON_ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "")
