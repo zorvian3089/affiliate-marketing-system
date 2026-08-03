@@ -11,7 +11,7 @@ from database.models import (
     LinkClick, Conversion, ContentPiece, RevenueSnapshot,
     Product, Niche, EmailCampaign, SocialPost
 )
-from config.settings import CLAUDE_MODEL
+from config.settings import GEMINI_MODEL as CLAUDE_MODEL
 
 logger = logging.getLogger(__name__)
 
