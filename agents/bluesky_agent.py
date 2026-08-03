@@ -56,6 +56,13 @@ def _make_post(session: dict, text: str, url: str) -> dict:
 class BlueskyAgent(BaseAgent):
     name = "BlueskyAgent"
 
+    def __init__(self):
+        # Bluesky uses the AT Protocol directly — no Claude needed.
+        # Skipping Anthropic client creation avoids a constructor failure
+        # when ANTHROPIC_API_KEY is absent or the SDK rejects an empty key.
+        self.client = None
+        self.model = None
+
     def execute(self, **kwargs) -> dict:
         if not (BLUESKY_HANDLE and BLUESKY_APP_PASSWORD):
             logger.warning("Bluesky credentials missing — skipping")

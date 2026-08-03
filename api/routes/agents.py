@@ -114,3 +114,29 @@ def run_acquisition(niche: str | None = None):
     if niche:
         return agent.generate_content_for_niche(niche)
     return agent.run()
+
+
+@router.get("/bluesky/debug")
+def bluesky_debug():
+    """Run Bluesky agent synchronously and return full diagnostic result."""
+    from agents.bluesky_agent import BlueskyAgent
+    from config.settings import BLUESKY_HANDLE, BLUESKY_APP_PASSWORD
+    from utils.token_store import get_active_token
+    try:
+        agent = BlueskyAgent()
+        result = agent.execute()
+        return {
+            "status": "ok",
+            "handle_set": bool(BLUESKY_HANDLE),
+            "password_set": bool(BLUESKY_APP_PASSWORD),
+            "wp_token_set": bool(get_active_token()),
+            "result": result,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "handle_set": bool(BLUESKY_HANDLE),
+            "password_set": bool(BLUESKY_APP_PASSWORD),
+            "wp_token_set": bool(get_active_token()),
+            "error": str(e),
+        }
