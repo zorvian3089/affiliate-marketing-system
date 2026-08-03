@@ -1,13 +1,17 @@
 import time
 import logging
+import json
+import re
 from datetime import datetime
 from abc import ABC, abstractmethod
-from anthropic import Anthropic
+import google.generativeai as genai
 from database.database import get_db
 from database.models import AgentLog
-from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL
+from config.settings import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
+
+genai.configure(api_key=GEMINI_API_KEY)
 
 
 class BaseAgent(ABC):
@@ -16,22 +20,20 @@ class BaseAgent(ABC):
     name: str = "BaseAgent"
 
     def __init__(self):
-        self.client = Anthropic(api_key=ANTHROPIC_API_KEY)
-        self.model = CLAUDE_MODEL
+        self.model = GEMINI_MODEL
+        self.client = genai.GenerativeModel(self.model)
 
     def ask_claude(self, system_prompt: str, user_message: str, max_tokens: int = 4096) -> str:
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
+        """Ask Gemini (drop-in replacement for ask_claude)."""
+        prompt = f"{system_prompt}\n\n{user_message}"
+        response = self.client.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens),
         )
-        return response.content[0].text
+        return response.text
 
     def ask_claude_json(self, system_prompt: str, user_message: str, max_tokens: int = 4096) -> dict | list:
-        import json, re
         text = self.ask_claude(system_prompt, user_message, max_tokens)
-        # Extract JSON from markdown code blocks if present
         match = re.search(r"```(?:json)?\s*([\s\S]+?)```", text)
         if match:
             text = match.group(1)

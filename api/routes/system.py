@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from database.database import get_db_session
 from database.models import AgentLog
 from config.settings import (
-    ANTHROPIC_API_KEY, BLUESKY_HANDLE, BLUESKY_APP_PASSWORD,
+    GEMINI_API_KEY, BLUESKY_HANDLE, BLUESKY_APP_PASSWORD,
     CLICKBANK_NICKNAME, WORDPRESS_SITE,
 )
 from utils.token_store import get_active_token
@@ -60,12 +60,12 @@ def _check_wp_token() -> dict | None:
 
 
 def _check_anthropic() -> dict | None:
-    if not ANTHROPIC_API_KEY:
+    if not GEMINI_API_KEY:
         return {
-            "id": "anthropic_missing",
+            "id": "gemini_missing",
             "level": "error",
-            "title": "Claude API Key Missing",
-            "message": "ANTHROPIC_API_KEY not set. Content creation and all AI agents are disabled.",
+            "title": "Gemini API Key Missing",
+            "message": "GEMINI_API_KEY not set. Content creation and all AI agents are disabled.",
             "action_label": "Add to Render",
             "action_url": "https://dashboard.render.com",
         }
