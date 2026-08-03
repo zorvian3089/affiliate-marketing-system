@@ -93,6 +93,8 @@ class Orchestrator:
             ("Analytics Snapshot", self._job_analytics),
             ("Link Manager", self._job_link_manager),
             ("Customer Acquisition", self._job_customer_acquisition),
+            ("Bluesky Post", self._job_bluesky),
+            ("WordPress Publish", self._job_wordpress),
         ]
         for name, job in initial_jobs:
             try:
