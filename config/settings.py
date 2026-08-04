@@ -108,6 +108,12 @@ ENABLE_EMAIL = os.getenv("ENABLE_EMAIL", "false").lower() == "true"
 BLUESKY_HANDLE = os.getenv("BLUESKY_HANDLE", "")
 BLUESKY_APP_PASSWORD = os.getenv("BLUESKY_APP_PASSWORD", "")
 
+# Medium cross-posting
+MEDIUM_TOKEN = os.getenv("MEDIUM_TOKEN", "")
+
+# Pinterest
+PINTEREST_TOKEN = os.getenv("PINTEREST_TOKEN", "")
+
 # WordPress.com publishing
 WORDPRESS_SITE = os.getenv("WORDPRESS_SITE", "healthreviewshub5.wordpress.com")
 WORDPRESS_TOKEN = os.getenv("WORDPRESS_TOKEN", "")

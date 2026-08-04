@@ -23,6 +23,8 @@ from agents.customer_acquisition_agent import CustomerAcquisitionAgent
 from agents.blogger_agent import BloggerAgent
 from agents.wordpress_agent import WordPressAgent
 from agents.bluesky_agent import BlueskyAgent
+from agents.reddit_agent import RedditAgent
+from agents.medium_agent import MediumAgent
 from database.database import init_db
 from config.settings import (
     CONTENT_CREATION_INTERVAL, SOCIAL_POST_INTERVAL, EMAIL_CAMPAIGN_INTERVAL,
@@ -68,6 +70,8 @@ class Orchestrator:
             ("blogger_publish", self._job_blogger, 86400),  # once per day — safe pace
             ("wordpress_publish", self._job_wordpress, 86400),  # once per day
             ("bluesky_post", self._job_bluesky, 86400),         # once per day
+            ("reddit_post", self._job_reddit, 86400),           # once per day
+            ("medium_post", self._job_medium, 86400 * 2),       # every 2 days
             ("seo_audit", self._job_seo, SEO_AUDIT_INTERVAL),
             ("social_media", self._job_social_media, SOCIAL_POST_INTERVAL),
             ("email_sequences", self._job_email, EMAIL_CAMPAIGN_INTERVAL),
@@ -144,6 +148,12 @@ class Orchestrator:
     def _job_bluesky(self):
         self._safe_run("Bluesky", lambda: BlueskyAgent().run())
 
+    def _job_reddit(self):
+        self._safe_run("Reddit", lambda: RedditAgent().run())
+
+    def _job_medium(self):
+        self._safe_run("Medium", lambda: MediumAgent().run())
+
     def _safe_run(self, name: str, fn):
         with self._lock:
             try:
@@ -172,6 +182,8 @@ class Orchestrator:
             "blogger": self._job_blogger,
             "wordpress": self._job_wordpress,
             "bluesky": self._job_bluesky,
+            "reddit": self._job_reddit,
+            "medium": self._job_medium,
         }
         job = agents.get(agent_name.lower())
         if not job:
