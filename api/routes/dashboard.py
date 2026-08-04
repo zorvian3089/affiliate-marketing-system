@@ -95,6 +95,14 @@ def get_published_posts(db: Session = Depends(get_db_session)):
         .all()
     )
 
+    def _norm(u: str) -> str:
+        u = (u or "").strip().lower().rstrip("/")
+        for prefix in ("https://", "http://"):
+            if u.startswith(prefix):
+                u = u[len(prefix):]
+                break
+        return u
+
     # Fetch live top-post view stats from WordPress.com (best effort)
     wp_views: dict[str, int] = {}
     token = get_active_token()
@@ -102,13 +110,13 @@ def get_published_posts(db: Session = Depends(get_db_session)):
         try:
             resp = _requests.get(
                 f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/stats/top-posts"
-                f"?period=month&num=100",
+                f"?period=alltime&num=100",
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=8,
             )
             if resp.ok:
                 for item in resp.json().get("top-posts", []):
-                    url = (item.get("href") or "").rstrip("/")
+                    url = _norm(item.get("href") or "")
                     if url:
                         wp_views[url] = item.get("views", 0)
         except Exception:
@@ -118,7 +126,7 @@ def get_published_posts(db: Session = Depends(get_db_session)):
     for p in posts:
         url = (p.published_url or "").rstrip("/")
         platform = "WordPress" if "wordpress.com" in url else "Blogger" if "blogspot.com" in url else "Other"
-        live_views = wp_views.get(url, p.views or 0)
+        live_views = wp_views.get(_norm(url), p.views or 0)
         result.append({
             "id": p.id,
             "title": p.title,
