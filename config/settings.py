@@ -114,6 +114,20 @@ MEDIUM_TOKEN = os.getenv("MEDIUM_TOKEN", "")
 # Pinterest
 PINTEREST_TOKEN = os.getenv("PINTEREST_TOKEN", "")
 
+# Telegram
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")
+
+# Search engine indexing
+INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "")
+
+# Tumblr
+TUMBLR_CONSUMER_KEY = os.getenv("TUMBLR_CONSUMER_KEY", "")
+TUMBLR_CONSUMER_SECRET = os.getenv("TUMBLR_CONSUMER_SECRET", "")
+TUMBLR_TOKEN = os.getenv("TUMBLR_TOKEN", "")
+TUMBLR_TOKEN_SECRET = os.getenv("TUMBLR_TOKEN_SECRET", "")
+TUMBLR_BLOG_NAME = os.getenv("TUMBLR_BLOG_NAME", "")
+
 # WordPress.com publishing
 WORDPRESS_SITE = os.getenv("WORDPRESS_SITE", "healthreviewshub5.wordpress.com")
 WORDPRESS_TOKEN = os.getenv("WORDPRESS_TOKEN", "")

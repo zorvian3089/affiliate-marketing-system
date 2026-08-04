@@ -25,6 +25,9 @@ from agents.wordpress_agent import WordPressAgent
 from agents.bluesky_agent import BlueskyAgent
 from agents.reddit_agent import RedditAgent
 from agents.medium_agent import MediumAgent
+from agents.telegram_agent import TelegramAgent
+from agents.indexnow_agent import IndexNowAgent
+from agents.tumblr_agent import TumblrAgent
 from database.database import init_db
 from config.settings import (
     CONTENT_CREATION_INTERVAL, SOCIAL_POST_INTERVAL, EMAIL_CAMPAIGN_INTERVAL,
@@ -72,6 +75,9 @@ class Orchestrator:
             ("bluesky_post", self._job_bluesky, 86400),         # once per day
             ("reddit_post", self._job_reddit, 86400),           # once per day
             ("medium_post", self._job_medium, 86400 * 2),       # every 2 days
+            ("telegram_post", self._job_telegram, 86400),       # once per day
+            ("indexnow", self._job_indexnow, 3600 * 6),         # every 6 hours
+            ("tumblr_post", self._job_tumblr, 86400),           # once per day
             ("seo_audit", self._job_seo, SEO_AUDIT_INTERVAL),
             ("social_media", self._job_social_media, SOCIAL_POST_INTERVAL),
             ("email_sequences", self._job_email, EMAIL_CAMPAIGN_INTERVAL),
@@ -154,6 +160,15 @@ class Orchestrator:
     def _job_medium(self):
         self._safe_run("Medium", lambda: MediumAgent().run())
 
+    def _job_telegram(self):
+        self._safe_run("Telegram", lambda: TelegramAgent().run())
+
+    def _job_indexnow(self):
+        self._safe_run("IndexNow", lambda: IndexNowAgent().run())
+
+    def _job_tumblr(self):
+        self._safe_run("Tumblr", lambda: TumblrAgent().run())
+
     def _safe_run(self, name: str, fn):
         with self._lock:
             try:
@@ -184,6 +199,9 @@ class Orchestrator:
             "bluesky": self._job_bluesky,
             "reddit": self._job_reddit,
             "medium": self._job_medium,
+            "telegram": self._job_telegram,
+            "indexnow": self._job_indexnow,
+            "tumblr": self._job_tumblr,
         }
         job = agents.get(agent_name.lower())
         if not job:
