@@ -103,30 +103,47 @@ def get_published_posts(db: Session = Depends(get_db_session)):
                 break
         return u
 
+    def _slug(u: str) -> str:
+        parts = _norm(u).split("/")
+        return parts[-1] if parts else ""
+
     # Fetch live top-post view stats from WordPress.com (best effort)
-    wp_views: dict[str, int] = {}
+    # Try multiple periods so recently published posts are captured
+    wp_views_url: dict[str, int] = {}
+    wp_views_slug: dict[str, int] = {}
     token = get_active_token()
     if token and WORDPRESS_SITE:
-        try:
-            resp = _requests.get(
-                f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/stats/top-posts"
-                f"?period=alltime&num=100",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=8,
-            )
-            if resp.ok:
-                for item in resp.json().get("top-posts", []):
-                    url = _norm(item.get("href") or "")
-                    if url:
-                        wp_views[url] = item.get("views", 0)
-        except Exception:
-            pass
+        for period in ("year", "month", "week", "day"):
+            try:
+                resp = _requests.get(
+                    f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/stats/top-posts"
+                    f"?period={period}&num=100",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=8,
+                )
+                if resp.ok:
+                    for item in resp.json().get("top-posts", []):
+                        href = item.get("href") or ""
+                        views = item.get("views", 0)
+                        u = _norm(href)
+                        s = _slug(href)
+                        if u:
+                            wp_views_url[u] = max(wp_views_url.get(u, 0), views)
+                        if s:
+                            wp_views_slug[s] = max(wp_views_slug.get(s, 0), views)
+            except Exception:
+                pass
 
     result = []
     for p in posts:
         url = (p.published_url or "").rstrip("/")
         platform = "WordPress" if "wordpress.com" in url else "Blogger" if "blogspot.com" in url else "Other"
-        live_views = wp_views.get(_norm(url), p.views or 0)
+        live_views = (
+            wp_views_url.get(_norm(url))
+            or wp_views_slug.get(_slug(url))
+            or p.views
+            or 0
+        )
         result.append({
             "id": p.id,
             "title": p.title,
