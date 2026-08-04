@@ -53,7 +53,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-random-string-here
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 # Scheduling intervals (seconds)
-CONTENT_CREATION_INTERVAL = 3600 * 6     # every 6 hours
+CONTENT_CREATION_INTERVAL = 3600 * 8     # 3 articles per day (every 8 hours)
 SOCIAL_POST_INTERVAL = 3600 * 4          # every 4 hours
 EMAIL_CAMPAIGN_INTERVAL = 3600 * 24      # daily
 ANALYTICS_INTERVAL = 3600 * 1            # hourly
@@ -88,7 +88,7 @@ TARGET_NICHES = os.getenv("TARGET_NICHES", ",".join([
 
 CONTENT_LANGUAGES = ["en"]
 MIN_ARTICLE_WORDS = 1500
-MAX_ARTICLES_PER_DAY = 10
+MAX_ARTICLES_PER_DAY = 3
 
 # ClickBank settings
 CLICKBANK_NICKNAME = os.getenv("CLICKBANK_NICKNAME", "")  # Your ClickBank account nickname
