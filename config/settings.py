@@ -8,7 +8,9 @@ load_dotenv(BASE_DIR / ".env")
 # Gemini API (free tier)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # gemini-1.5-* was shut down Sept 2025. Override via env; base_agent auto-discovers a working flash model if this 404s.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Verified working for article-length JSON on a new free key (2.5-flash is closed to new keys;
+# 3.7/3.8-flash hung). Override via env; base_agent auto-discovers a model if this one is missing.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 # Database — PostgreSQL on Render (DATABASE_URL set automatically), SQLite locally
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/database/affiliate.db")

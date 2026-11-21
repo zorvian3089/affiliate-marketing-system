@@ -28,15 +28,16 @@ def _discover_model(preferred: str) -> str:
     except Exception as e:
         logger.warning(f"Could not list Gemini models ({e}); using {preferred}")
         return preferred
-    if preferred in names:
+    if preferred and preferred in names:
         return preferred
-    flash = sorted(
-        (n for n in names if "flash" in n and "lite" not in n and "preview" not in n
-         and "exp" not in n and "image" not in n and "tts" not in n),
-        reverse=True,
-    )
-    chosen = flash[0] if flash else (names[0] if names else preferred)
-    logger.warning(f"Gemini model '{preferred}' unavailable — falling back to '{chosen}'")
+    # Pick the newest plain "gemini-<ver>-flash" (not lite/omni/image/preview/exp/tts).
+    def _ver(n: str):
+        m = re.fullmatch(r"gemini-(\d+(?:\.\d+)?)-flash", n)
+        return float(m.group(1)) if m else None
+    versions = sorted(((_ver(n), n) for n in names if _ver(n) is not None), reverse=True)
+    chosen = versions[0][1] if versions else ("gemini-flash-latest" if "gemini-flash-latest" in names
+                                              else (names[0] if names else preferred))
+    logger.info(f"Gemini model auto-selected: {chosen}")
     return chosen
 
 
@@ -85,7 +86,8 @@ class BaseAgent(ABC):
         for attempt in range(retries):
             try:
                 response = self.client.generate_content(
-                    prompt, generation_config=genai.types.GenerationConfig(**cfg)
+                    prompt, generation_config=genai.types.GenerationConfig(**cfg),
+                    request_options={"timeout": 120},
                 )
                 return response.text
             except Exception as e:  # rate limit (429), transient 5xx, empty/blocked reply
