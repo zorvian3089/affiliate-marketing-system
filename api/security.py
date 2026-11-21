@@ -13,6 +13,7 @@ from config.settings import ADMIN_API_KEY
 
 _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _PROTECTED_GET_PREFIXES = ("/api/agents/bluesky/debug", "/api/agents/clickbank/hoplinks")
+_PUBLIC_WRITE_PATHS = ("/api/subscribe",)  # called from the public static site
 _LOCAL = {"127.0.0.1", "::1", "localhost"}
 
 
@@ -26,7 +27,7 @@ def _authorized(request: Request) -> bool:
 async def admin_guard(request: Request, call_next):
     needs_auth = request.method in _WRITE_METHODS or request.url.path.startswith(_PROTECTED_GET_PREFIXES)
     # Public: click redirect is a GET anyway; CORS preflight must pass.
-    if request.method == "OPTIONS":
+    if request.url.path in _PUBLIC_WRITE_PATHS or request.method == "OPTIONS":
         needs_auth = False
     if needs_auth and not _authorized(request):
         return JSONResponse({"detail": "Unauthorized — missing or invalid admin key"}, status_code=401)

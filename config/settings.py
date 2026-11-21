@@ -65,29 +65,20 @@ NICHE_RESEARCH_INTERVAL = 3600 * 24 * 7  # weekly
 SEO_AUDIT_INTERVAL = 3600 * 24           # daily
 LINK_CHECK_INTERVAL = 3600 * 6           # every 6 hours
 
-# Content settings — ALL high-value ClickBank niches
-TARGET_NICHES = os.getenv("TARGET_NICHES", ",".join([
-    "weight loss",
-    "diabetes blood sugar",
-    "keto diet",
-    "anxiety stress sleep",
-    "make money online",
-    "manifestation law of attraction",
-    "relationship dating men",
-    "relationship dating women",
+# Content focus. Deliberately NOT health/supplement niches: those are the most policed
+# (FTC, Google YMYL) and carry the highest account-ban risk. Override with TARGET_NICHES env.
+TARGET_NICHES = [n.strip() for n in os.getenv("TARGET_NICHES", ",".join([
     "dog training",
-    "survival prepping",
-    "joint pain arthritis",
-    "muscle building",
-    "tinnitus hearing",
-    "memory brain health",
-    "solar off grid",
     "golf improvement",
-    "cat health",
-    "vision eyesight",
+    "survival prepping",
+    "solar off grid",
     "gardening homesteading",
-    "forex trading",
-])).split(",")
+])).split(",") if n.strip()]
+
+# First-party static site (served by this app at /blog, regenerated from the DB)
+ENABLE_STATIC_SITE = os.getenv("ENABLE_STATIC_SITE", "true").lower() == "true"
+SITE_NAME = os.getenv("SITE_NAME", "Trusted Picks Guide")
+SITE_URL = os.getenv("SITE_URL", f"{BASE_URL.rstrip('/')}/blog").rstrip("/")
 
 CONTENT_LANGUAGES = ["en"]
 MIN_ARTICLE_WORDS = 1500

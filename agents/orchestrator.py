@@ -28,11 +28,12 @@ from agents.medium_agent import MediumAgent
 from agents.telegram_agent import TelegramAgent
 from agents.indexnow_agent import IndexNowAgent
 from agents.tumblr_agent import TumblrAgent
+from agents.static_site_agent import StaticSiteAgent
 from database.database import init_db
 from config.settings import (
     CONTENT_CREATION_INTERVAL, SOCIAL_POST_INTERVAL, EMAIL_CAMPAIGN_INTERVAL,
     ANALYTICS_INTERVAL, PRODUCT_DISCOVERY_INTERVAL, NICHE_RESEARCH_INTERVAL,
-    SEO_AUDIT_INTERVAL, LINK_CHECK_INTERVAL
+    SEO_AUDIT_INTERVAL, LINK_CHECK_INTERVAL, ENABLE_STATIC_SITE, TARGET_NICHES
 )
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,7 @@ class Orchestrator:
             ("niche_research", self._job_niche_research, NICHE_RESEARCH_INTERVAL),
             ("product_discovery", self._job_product_discovery, PRODUCT_DISCOVERY_INTERVAL),
             ("content_creation", self._job_content_creation, CONTENT_CREATION_INTERVAL),
-            ("blogger_publish", self._job_blogger, 86400),  # once per day — safe pace
-            ("wordpress_publish", self._job_wordpress, 86400),  # once per day
+            ("static_site", self._job_static_site, 3600 * 6),   # build/publish first-party blog
             ("bluesky_post", self._job_bluesky, 86400),         # once per day
             ("reddit_post", self._job_reddit, 86400),           # once per day
             ("medium_post", self._job_medium, 86400 * 2),       # every 2 days
@@ -84,6 +84,12 @@ class Orchestrator:
             ("link_check", self._job_link_manager, LINK_CHECK_INTERVAL),
             ("analytics", self._job_analytics, ANALYTICS_INTERVAL),
         ]
+
+        if not ENABLE_STATIC_SITE:  # legacy platforms only when the first-party site is off,
+            jobs += [                # otherwise they'd compete for the same drafts
+                ("blogger_publish", self._job_blogger, 86400),
+                ("wordpress_publish", self._job_wordpress, 86400),
+            ]
 
         for job_id, func, interval_seconds in jobs:
             self.scheduler.add_job(
@@ -100,12 +106,16 @@ class Orchestrator:
         logger.info("Running initial bootstrap cycle...")
         initial_jobs = [
             ("ClickBank Setup", self._job_clickbank),
+            ("Focus Niches", self._bootstrap_niches),
+            ("First Content", self._bootstrap_content),
+            ("Static Site", self._job_static_site),
             ("Analytics Snapshot", self._job_analytics),
             ("Link Manager", self._job_link_manager),
             ("Customer Acquisition", self._job_customer_acquisition),
             ("Bluesky Post", self._job_bluesky),
-            ("WordPress Publish", self._job_wordpress),
         ]
+        if not ENABLE_STATIC_SITE:
+            initial_jobs.append(("WordPress Publish", self._job_wordpress))
         for name, job in initial_jobs:
             try:
                 logger.info(f"  Bootstrap: {name}")
@@ -114,6 +124,28 @@ class Orchestrator:
                 logger.error(f"  Bootstrap failed for {name}: {e}")
 
     # ── Job wrappers ───────────────────────────────────────────────────────────
+
+    def _job_static_site(self):
+        self._safe_run("StaticSite", lambda: StaticSiteAgent().run())
+
+    def _bootstrap_niches(self):
+        """Research the focus niches once, if they aren't in the DB yet."""
+        from database.database import get_db
+        from database.models import Niche
+        with get_db() as db:
+            have = {n.name for n in db.query(Niche).filter(Niche.name.in_(TARGET_NICHES)).all()}
+        missing = [n for n in TARGET_NICHES if n not in have]
+        if missing:
+            self._safe_run("NicheResearch", lambda: NicheResearchAgent().run(niches=missing))
+
+    def _bootstrap_content(self):
+        """Make sure the site has something on it from day one."""
+        from database.database import get_db
+        from database.models import ContentPiece, PUBLISHABLE_TYPES
+        with get_db() as db:
+            n = db.query(ContentPiece).filter(ContentPiece.content_type.in_(PUBLISHABLE_TYPES)).count()
+        if n < 3:
+            self._safe_run("ContentCreation", lambda: ContentCreationAgent().run(max_articles=3))
 
     def _job_niche_research(self):
         self._safe_run("NicheResearch", lambda: NicheResearchAgent().run())
@@ -202,6 +234,7 @@ class Orchestrator:
             "telegram": self._job_telegram,
             "indexnow": self._job_indexnow,
             "tumblr": self._job_tumblr,
+            "site": self._job_static_site,
         }
         job = agents.get(agent_name.lower())
         if not job:

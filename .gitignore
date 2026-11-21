@@ -35,3 +35,4 @@ Thumbs.db
 save_wp_token.py
 update_wp_articles.py
 force_update_wp.py
+site_output/

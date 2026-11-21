@@ -183,15 +183,20 @@ Make the email feel personal, not like a mass blast. Lead with value, end with t
             return True  # Simulate success when not configured
 
         try:
+            from utils.unsub import unsubscribe_url
+            unsub = unsubscribe_url(to_email)
             msg = MIMEMultipart("alternative")
+            msg["List-Unsubscribe"] = f"<{unsub}>"
             msg["Subject"] = subject
             msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
             msg["To"] = f"{to_name} <{to_email}>"
 
             if body_text:
-                msg.attach(MIMEText(body_text, "plain"))
+                msg.attach(MIMEText(f"{body_text}\n\n--\nUnsubscribe: {unsub}", "plain"))
             if body_html:
-                msg.attach(MIMEText(body_html, "html"))
+                msg.attach(MIMEText(
+                    f'{body_html}<hr><p style="font-size:12px;color:#777">You received this because you '
+                    f'subscribed on our website. <a href="{unsub}">Unsubscribe</a></p>', "html"))
 
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
                 server.starttls()

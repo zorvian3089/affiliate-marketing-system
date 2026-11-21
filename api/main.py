@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.routes import dashboard, agents, content, links, webhooks
 from api.routes.dashboard import products_router
-from api.routes import wp_auth, system
+from api.routes import wp_auth, system, public
 from api.security import admin_guard
 from agents.orchestrator import get_orchestrator
 from database.database import init_db
@@ -68,6 +68,12 @@ app.include_router(links.router)
 app.include_router(webhooks.router)
 app.include_router(wp_auth.router)
 app.include_router(system.router)
+app.include_router(public.router)
+
+# Serve the generated first-party blog at /blog (regenerated from the DB by StaticSiteAgent)
+from agents.static_site_agent import SITE_DIR
+SITE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/blog", StaticFiles(directory=str(SITE_DIR), html=True), name="blog")
 
 # Serve dashboard UI
 dashboard_dir = Path(__file__).parent.parent / "dashboard"

@@ -11,11 +11,11 @@ from datetime import datetime
 from agents.base_agent import BaseAgent
 from database.database import get_db
 from database.models import ContentPiece, SocialPost, ContentStatus
-from config.settings import WORDPRESS_SITE, INDEXNOW_KEY
+from config.settings import WORDPRESS_SITE, INDEXNOW_KEY, SITE_URL, ENABLE_STATIC_SITE
 
 logger = logging.getLogger(__name__)
 
-SITEMAP_URL = f"https://{WORDPRESS_SITE}/sitemap.xml"
+SITEMAP_URL = f"{SITE_URL}/sitemap.xml" if ENABLE_STATIC_SITE else f"https://{WORDPRESS_SITE}/sitemap.xml"
 
 
 class IndexNowAgent(BaseAgent):

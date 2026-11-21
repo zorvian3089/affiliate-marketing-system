@@ -9,7 +9,7 @@ from datetime import datetime
 from agents.base_agent import BaseAgent
 from database.database import get_db
 from database.models import Niche, Product, ContentPiece, ContentStatus
-from config.settings import MIN_ARTICLE_WORDS, MAX_ARTICLES_PER_DAY
+from config.settings import MIN_ARTICLE_WORDS, MAX_ARTICLES_PER_DAY, TARGET_NICHES
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ class ContentCreationAgent(BaseAgent):
 
         with get_db() as db:
             niche_query = db.query(Niche).filter(Niche.status.in_(["active", "testing"]))
+            if not niche_id:
+                niche_query = niche_query.filter(Niche.name.in_(TARGET_NICHES))  # stay on focus niches
             if niche_id:
                 niche_query = niche_query.filter(Niche.id == niche_id)
             niches = niche_query.all()

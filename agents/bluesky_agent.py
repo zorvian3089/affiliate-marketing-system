@@ -86,7 +86,7 @@ class BlueskyAgent(BaseAgent):
     def _get_latest_wp_article(self) -> dict | None:
         token = get_active_token()
         if not (WORDPRESS_SITE and token):
-            return None
+            return self._latest_db_article()
         try:
             resp = requests.get(
                 f"https://public-api.wordpress.com/rest/v1.1/sites/{WORDPRESS_SITE}/posts"
@@ -103,6 +103,16 @@ class BlueskyAgent(BaseAgent):
         except Exception as e:
             logger.error(f"WordPress fetch failed: {e}")
         return None
+
+    @staticmethod
+    def _latest_db_article() -> dict | None:
+        from database.database import get_db
+        from database.models import ContentPiece, ContentStatus
+        with get_db() as db:
+            p = (db.query(ContentPiece)
+                 .filter(ContentPiece.status == ContentStatus.published, ContentPiece.published_url.isnot(None))
+                 .order_by(ContentPiece.published_at.desc()).first())
+            return {"title": p.title, "url": p.published_url, "excerpt": (p.meta_description or "")[:120]} if p else None
 
     def _build_post(self, article: dict) -> str:
         title = article["title"][:80]
