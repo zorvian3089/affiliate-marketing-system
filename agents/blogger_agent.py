@@ -10,7 +10,7 @@ import requests
 from datetime import datetime
 from agents.base_agent import BaseAgent
 from database.database import get_db
-from database.models import ContentPiece, ContentStatus, AffiliateLink
+from database.models import ContentPiece, ContentStatus, PUBLISHABLE_TYPES, AffiliateLink
 from config.settings import (
     BLOGGER_BLOG_ID, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
 )
@@ -81,6 +81,7 @@ class BloggerAgent(BaseAgent):
                 .filter(
                     ContentPiece.status == ContentStatus.draft,
                     ContentPiece.published_url == None,  # noqa: E711
+                    ContentPiece.content_type.in_(PUBLISHABLE_TYPES),
                 )
                 .order_by(ContentPiece.created_at.asc())
                 .limit(MAX_PUBLISH_PER_RUN)
@@ -164,15 +165,15 @@ class BloggerAgent(BaseAgent):
         if "[AFFILIATE_LINK]" not in html:
             return html
 
-        # Use direct hoplinks (server is local, not public — tracker won't work for readers)
+        # Use the original network URL (AffiliateLink.original_url) — the cloaked /go/ URL
+        # points at this server, which may not be publicly reachable.
         with get_db() as db:
-            from database.models import Product
-            product = db.query(Product).filter(
-                Product.affiliate_url != None,  # noqa: E711
-                Product.affiliate_url != "",
+            link = db.query(AffiliateLink).filter(
+                AffiliateLink.original_url.like("%hop.clickbank.net%")
             ).first()
-            if product and product.affiliate_url:
-                html = html.replace("[AFFILIATE_LINK]", product.affiliate_url)
+            url = link.original_url if link else None
+        if url:
+            html = html.replace("[AFFILIATE_LINK]", url)
 
         return html
 

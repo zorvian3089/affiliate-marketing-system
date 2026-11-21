@@ -9,7 +9,7 @@ import requests
 from datetime import datetime
 from agents.base_agent import BaseAgent
 from database.database import get_db
-from database.models import ContentPiece, ContentStatus
+from database.models import ContentPiece, ContentStatus, PUBLISHABLE_TYPES
 from config.settings import WORDPRESS_SITE
 from utils.token_store import get_active_token
 
@@ -73,6 +73,7 @@ class WordPressAgent(BaseAgent):
                 .filter(
                     ContentPiece.status == ContentStatus.draft,
                     ContentPiece.published_url == None,  # noqa: E711
+                    ContentPiece.content_type.in_(PUBLISHABLE_TYPES),
                 )
                 .order_by(ContentPiece.created_at.asc())
                 .limit(MAX_PUBLISH_PER_RUN)

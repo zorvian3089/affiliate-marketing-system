@@ -9,8 +9,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: BASE_URL
+        value: https://affiliate-marketing-system-7994.onrender.com
       - key: WORDPRESS_SITE
         value: healthreviewshub5.wordpress.com
       - key: WORDPRESS_CLIENT_ID

@@ -65,7 +65,8 @@ def wp_auth_page():
 
       fetch('/api/wp/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                   'X-Admin-Key': prompt('Admin key (ADMIN_API_KEY):') || '' },
         body: JSON.stringify({ token: token })
       })
       .then(r => r.json())

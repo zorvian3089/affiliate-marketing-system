@@ -22,12 +22,20 @@ class CustomerAcquisitionAgent(BaseAgent):
     name = "CustomerAcquisitionAgent"
 
     def execute(self, **kwargs) -> dict:
+        # Quora answers / lead magnets were generated but never stored or used, so they
+        # only burned API quota. Run them on demand via their methods, not on every cycle.
         results = {}
         results["seo_articles"] = self._create_seo_buyer_content()
-        results["quora_answers"] = self._create_quora_answers()
         results["youtube_scripts"] = self._create_youtube_scripts()
-        results["email_lead_magnets"] = self._create_lead_magnets()
         return results
+
+    @staticmethod
+    def _exists(keyword: str, content_type: str) -> bool:
+        with get_db() as db:
+            return db.query(ContentPiece.id).filter(
+                ContentPiece.target_keyword.ilike(keyword[:199]),
+                ContentPiece.content_type == content_type,
+            ).first() is not None
 
     # ── SEO Buyer Intent Content ───────────────────────────────────────────────
 
@@ -49,7 +57,11 @@ class CustomerAcquisitionAgent(BaseAgent):
         ]
 
         for product in CLICKBANK_TOP_PRODUCTS[:10]:  # Top 10 products first
+            if created >= 1:  # 1 new review per cycle keeps us inside free-tier limits
+                break
             keyword = f"{product['name']} review — does it really work?"
+            if self._exists(keyword, "product_review"):
+                continue
             article = self._write_seo_article(product, keyword)
             if article:
                 self._save_article(article, product["niche"])
@@ -79,12 +91,16 @@ Pros: {', '.join(product['pros'])}
 Cons: {', '.join(product['cons'])}
 Affiliate link: {hoplink}
 
-Write a 1800-word honest review that:
+Write a 1800-word balanced, honest review that:
 1. Ranks for "{keyword}" on Google
-2. Answers the reader's real question (does this work?)
-3. Builds trust with honest pros AND cons
+2. Answers the reader's real question (does this work?) using only the facts above plus
+   widely known general information — describe vendor claims as claims, say where independent
+   evidence is limited
+3. Lists genuine pros AND cons, and who should NOT buy it (and "talk to your doctor first" for health products)
 4. Naturally includes the affiliate link 2-3 times
-5. Has a clear verdict and recommendation
+5. Ends with a measured verdict
+RULES: never say you personally tested it, never invent testimonials/before-after results/statistics/studies,
+never claim it cures, treats or prevents a disease, never invent a refund policy.
 
 Return JSON:
 {{
@@ -186,6 +202,10 @@ Return JSON array:
         """Generate YouTube video scripts for top products."""
         scripts_created = 0
         for product in CLICKBANK_TOP_PRODUCTS[:5]:
+            if scripts_created >= 1:
+                break
+            if self._exists(f"{product['name']} youtube", "youtube_script"):
+                continue
             script = self._write_youtube_script(product)
             if script:
                 self._save_article({
@@ -193,7 +213,7 @@ Return JSON array:
                     "body": script.get("full_script", ""),
                     "meta_description": script.get("video_description", "")[:159],
                     "slug": "",
-                    "target_keyword": script.get("target_keyword", ""),
+                    "target_keyword": f"{product['name']} youtube",
                     "secondary_keywords": script.get("tags", []),
                     "word_count": len(script.get("full_script", "").split()),
                     "content_type": "youtube_script",

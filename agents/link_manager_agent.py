@@ -49,8 +49,8 @@ class LinkManagerAgent(BaseAgent):
             db.add(link)
             db.flush()
 
-            # Update the product's affiliate URL
-            product.affiliate_url = cloaked_url
+            # NOTE: product.affiliate_url is intentionally left as the real network URL.
+            # Publishers embed it directly; the cloaked /go/ URL is only for tracked channels.
 
             # Return a copy of the data before session closes
             link_data = {
@@ -120,8 +120,11 @@ class LinkManagerAgent(BaseAgent):
             if not url:
                 continue
             try:
-                response = requests.head(url, timeout=10, allow_redirects=True)
-                if response.status_code >= 400:
+                response = requests.get(url, timeout=15, allow_redirects=True, stream=True,
+                                        headers={"User-Agent": "Mozilla/5.0"})
+                response.close()
+                # Only 404/410 means gone. 403/405/429/5xx are bot-blocking or transient.
+                if response.status_code in (404, 410):
                     with get_db() as db:
                         link = db.query(AffiliateLink).filter(AffiliateLink.id == link_data["id"]).first()
                         if link:

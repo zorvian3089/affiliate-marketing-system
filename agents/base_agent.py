@@ -13,6 +13,53 @@ logger = logging.getLogger(__name__)
 
 genai.configure(api_key=GEMINI_API_KEY)
 
+# Resolved once per process: the model name that actually works for this API key.
+_resolved_model: str | None = None
+
+
+def _discover_model(preferred: str) -> str:
+    """Return `preferred` if the key can use it, else the best available flash model."""
+    try:
+        names = [
+            m.name.replace("models/", "")
+            for m in genai.list_models()
+            if "generateContent" in m.supported_generation_methods
+        ]
+    except Exception as e:
+        logger.warning(f"Could not list Gemini models ({e}); using {preferred}")
+        return preferred
+    if preferred in names:
+        return preferred
+    flash = sorted(
+        (n for n in names if "flash" in n and "lite" not in n and "preview" not in n
+         and "exp" not in n and "image" not in n and "tts" not in n),
+        reverse=True,
+    )
+    chosen = flash[0] if flash else (names[0] if names else preferred)
+    logger.warning(f"Gemini model '{preferred}' unavailable — falling back to '{chosen}'")
+    return chosen
+
+
+def _extract_json(text: str):
+    """Parse JSON from an LLM reply: tolerates code fences and surrounding prose."""
+    text = text.strip()
+    fence = re.search(r"```(?:json)?\s*([\s\S]+?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    try:
+        return json.loads(text, strict=False)
+    except json.JSONDecodeError:
+        pass
+    # Fall back to the outermost {...} or [...] block
+    for open_c, close_c in (("{", "}"), ("[", "]")):
+        start, end = text.find(open_c), text.rfind(close_c)
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1], strict=False)
+            except json.JSONDecodeError:
+                continue
+    raise ValueError(f"No valid JSON in model reply: {text[:200]!r}")
+
 
 class BaseAgent(ABC):
     """Base class all agents inherit from."""
@@ -20,24 +67,46 @@ class BaseAgent(ABC):
     name: str = "BaseAgent"
 
     def __init__(self):
-        self.model = GEMINI_MODEL
+        global _resolved_model
+        if _resolved_model is None:
+            _resolved_model = _discover_model(GEMINI_MODEL) if GEMINI_API_KEY else GEMINI_MODEL
+        self.model = _resolved_model
         self.client = genai.GenerativeModel(self.model)
 
-    def ask_claude(self, system_prompt: str, user_message: str, max_tokens: int = 4096) -> str:
-        """Ask Gemini (drop-in replacement for ask_claude)."""
+    def ask_claude(self, system_prompt: str, user_message: str, max_tokens: int = 4096,
+                   json_mode: bool = False, retries: int = 3) -> str:
+        """Ask Gemini. (Name kept for backwards compatibility with all agents.)"""
+        cfg = {"max_output_tokens": max_tokens}
+        if json_mode:
+            cfg["response_mime_type"] = "application/json"
         prompt = f"{system_prompt}\n\n{user_message}"
-        response = self.client.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(max_output_tokens=max_tokens),
-        )
-        return response.text
+
+        last_err: Exception | None = None
+        for attempt in range(retries):
+            try:
+                response = self.client.generate_content(
+                    prompt, generation_config=genai.types.GenerationConfig(**cfg)
+                )
+                return response.text
+            except Exception as e:  # rate limit (429), transient 5xx, empty/blocked reply
+                last_err = e
+                wait = 5 * (3 ** attempt)  # 5s, 15s, 45s — free tier is rate-limited
+                logger.warning(f"[{self.name}] Gemini call failed ({e}); retry in {wait}s")
+                time.sleep(wait)
+        raise RuntimeError(f"Gemini call failed after {retries} attempts: {last_err}")
 
     def ask_claude_json(self, system_prompt: str, user_message: str, max_tokens: int = 4096) -> dict | list:
-        text = self.ask_claude(system_prompt, user_message, max_tokens)
-        match = re.search(r"```(?:json)?\s*([\s\S]+?)```", text)
-        if match:
-            text = match.group(1)
-        return json.loads(text.strip())
+        text = self.ask_claude(system_prompt, user_message, max_tokens, json_mode=True)
+        try:
+            return _extract_json(text)
+        except ValueError:
+            # One re-ask: truncated / malformed output is the usual cause
+            text = self.ask_claude(
+                system_prompt,
+                user_message + "\n\nReturn ONLY compact, valid JSON. Escape all newlines inside strings as \\n.",
+                max_tokens, json_mode=True, retries=1,
+            )
+            return _extract_json(text)
 
     def log(self, task: str, status: str, result: str = "", error: str = "", duration: float = 0.0):
         try:

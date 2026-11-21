@@ -25,7 +25,16 @@ Your content:
 - Includes real pros/cons to build reader trust
 - Uses proper H2/H3 heading structure
 - Has strong calls-to-action
-- Is written in markdown format"""
+- Is written in markdown format
+
+STRICT HONESTY RULES (FTC Consumer Review Rule applies; health claims are scrutinised):
+- NEVER claim you personally tried, tested or used a product, and never invent customer
+  testimonials, "before and after" results, star ratings, statistics or study citations.
+- Describe what the vendor CLAIMS ("according to the official site...") and what independent
+  evidence does or does not support. Say clearly when evidence is limited.
+- NEVER promise or imply that a supplement cures, treats or prevents any disease or condition.
+- Include a short "who should NOT buy this / talk to your doctor first" section for health products.
+- Mention the refund policy only if it was supplied to you."""
 
 
 class ContentCreationAgent(BaseAgent):
@@ -62,6 +71,8 @@ class ContentCreationAgent(BaseAgent):
             for keyword in keywords:
                 if created >= limit:
                     break
+                if self._already_covered(keyword):
+                    continue
                 content_type = self._choose_content_type(keyword, niche_products)
                 piece = self._create_content(niche, keyword, content_type, niche_products)
                 if piece:
@@ -69,6 +80,14 @@ class ContentCreationAgent(BaseAgent):
                     created += 1
 
         return {"articles_created": created}
+
+    @staticmethod
+    def _already_covered(keyword: str) -> bool:
+        """True if an article for this keyword already exists (prevents duplicate content)."""
+        with get_db() as db:
+            return db.query(ContentPiece.id).filter(
+                ContentPiece.target_keyword.ilike(keyword.strip()[:199])
+            ).first() is not None
 
     def _choose_content_type(self, keyword: str, products: list) -> str:
         kw = keyword.lower()

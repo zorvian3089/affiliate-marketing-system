@@ -35,6 +35,11 @@ class EmailStatus(enum.Enum):
     completed = "completed"
 
 
+# Only these content types are blog articles. Others (quora_answer, youtube_script)
+# are working drafts and must never be auto-published to the blogs.
+PUBLISHABLE_TYPES = ["product_review", "comparison", "best_of_list", "how_to_guide", "buyer_guide", "blog_post"]
+
+
 class Niche(Base):
     __tablename__ = "niches"
 

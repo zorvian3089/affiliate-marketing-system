@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from api.routes import dashboard, agents, content, links, webhooks
 from api.routes.dashboard import products_router
 from api.routes import wp_auth, system
+from api.security import admin_guard
 from agents.orchestrator import get_orchestrator
 from database.database import init_db
 from config.settings import APP_HOST, APP_PORT
@@ -50,11 +51,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.middleware("http")(admin_guard)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"],  # includes X-Admin-Key
 )
 
 # API routes

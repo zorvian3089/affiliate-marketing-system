@@ -7,7 +7,8 @@ load_dotenv(BASE_DIR / ".env")
 
 # Gemini API (free tier)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-1.5-flash"
+# gemini-1.5-* was shut down Sept 2025. Override via env; base_agent auto-discovers a working flash model if this 404s.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Database — PostgreSQL on Render (DATABASE_URL set automatically), SQLite locally
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/database/affiliate.db")
@@ -51,6 +52,8 @@ APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))  # Render sets PORT automatically
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-random-string-here")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+# Protects all write/trigger endpoints. If empty, writes are only allowed from localhost.
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
 
 # Scheduling intervals (seconds)
 CONTENT_CREATION_INTERVAL = 3600 * 8     # 3 articles per day (every 8 hours)

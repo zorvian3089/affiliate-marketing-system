@@ -23,6 +23,7 @@ httpx>=0.27.0
 # Social Media (install what you need)
 tweepy>=4.14.0          # Twitter/X
 praw>=7.7.1             # Reddit
+requests-oauthlib>=2.0.0  # Tumblr OAuth1
 
 # Blogger publishing
 markdown>=3.7
