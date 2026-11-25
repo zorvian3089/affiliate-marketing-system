@@ -16,6 +16,9 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/database/affiliate.db")
 # Render gives postgres:// but SQLAlchemy requires postgresql://
 DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql://", 1)
+# Name the installed driver explicitly (psycopg2-binary); never rely on SQLAlchemy's default.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # Affiliate Networks
 AMAZON_ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "")
