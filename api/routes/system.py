@@ -12,7 +12,7 @@ from database.database import get_db_session
 from database.models import AgentLog
 from config.settings import (
     GEMINI_API_KEY, BLUESKY_HANDLE, BLUESKY_APP_PASSWORD,
-    CLICKBANK_NICKNAME, WORDPRESS_SITE,
+    CLICKBANK_NICKNAME, WORDPRESS_SITE, ENABLE_STATIC_SITE,
 )
 from utils.token_store import get_active_token
 
@@ -140,7 +140,10 @@ def get_warnings(db: Session = Depends(get_db_session)):
     warnings = []
 
     # Critical credential checks
-    for check_fn in [_check_anthropic, _check_wp_token, _check_bluesky, _check_clickbank]:
+    checks = [_check_anthropic, _check_bluesky, _check_clickbank]
+    if not ENABLE_STATIC_SITE:  # WordPress/Blogger are unused while the own site is on
+        checks.append(_check_wp_token)
+    for check_fn in checks:
         w = check_fn()
         if w:
             warnings.append(w)
@@ -149,7 +152,8 @@ def get_warnings(db: Session = Depends(get_db_session)):
     warnings.extend(_check_agent_failures(db))
 
     # Known static issues
-    warnings.extend(_static_warnings())
+    if not ENABLE_STATIC_SITE:
+        warnings.extend(_static_warnings())
 
     # Sort: errors first, then warnings, then info
     order = {"error": 0, "warning": 1, "info": 2}

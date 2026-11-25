@@ -106,6 +106,7 @@ class Orchestrator:
         logger.info("Running initial bootstrap cycle...")
         initial_jobs = [
             ("ClickBank Setup", self._job_clickbank),
+            ("Static Site", self._job_static_site),
             ("Focus Niches", self._bootstrap_niches),
             ("First Content", self._bootstrap_content),
             ("Static Site", self._job_static_site),

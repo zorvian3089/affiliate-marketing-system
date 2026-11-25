@@ -11,6 +11,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Verified working for article-length JSON on a new free key (2.5-flash is closed to new keys;
 # 3.7/3.8-flash hung). Override via env; base_agent auto-discovers a model if this one is missing.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+# Tried in order when the main model is overloaded (503) or times out (504)
+GEMINI_FALLBACK_MODELS = [m.strip() for m in os.getenv(
+    "GEMINI_FALLBACK_MODELS", "gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.5-flash"
+).split(",") if m.strip()]
 
 # Database — PostgreSQL on Render (DATABASE_URL set automatically), SQLite locally
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/database/affiliate.db")

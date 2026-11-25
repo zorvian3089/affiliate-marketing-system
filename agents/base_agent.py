@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import google.generativeai as genai
 from database.database import get_db
 from database.models import AgentLog
-from config.settings import GEMINI_API_KEY, GEMINI_MODEL
+from config.settings import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_FALLBACK_MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -75,26 +75,36 @@ class BaseAgent(ABC):
         self.client = genai.GenerativeModel(self.model)
 
     def ask_claude(self, system_prompt: str, user_message: str, max_tokens: int = 4096,
-                   json_mode: bool = False, retries: int = 3) -> str:
+                   json_mode: bool = False, retries: int = 4) -> str:
         """Ask Gemini. (Name kept for backwards compatibility with all agents.)"""
         cfg = {"max_output_tokens": max_tokens}
         if json_mode:
             cfg["response_mime_type"] = "application/json"
         prompt = f"{system_prompt}\n\n{user_message}"
 
+        # Each attempt moves to the next model, so one overloaded model doesn't block everything.
+        models = [self.model] + [m for m in GEMINI_FALLBACK_MODELS if m != self.model]
         last_err: Exception | None = None
         for attempt in range(retries):
+            name = models[attempt % len(models)]
             try:
-                response = self.client.generate_content(
+                client = self.client if name == self.model else genai.GenerativeModel(name)
+                # stream=True: long replies arrive in chunks instead of hitting a server deadline (504).
+                # retry=None: the SDK's own retry can silently spin for 600s; we retry here instead.
+                response = client.generate_content(
                     prompt, generation_config=genai.types.GenerationConfig(**cfg),
-                    request_options={"timeout": 120},
+                    stream=True, request_options={"timeout": 180, "retry": None},
                 )
-                return response.text
-            except Exception as e:  # rate limit (429), transient 5xx, empty/blocked reply
+                text = "".join(chunk.text for chunk in response)
+                if not text.strip():
+                    raise ValueError("empty reply")
+                return text
+            except Exception as e:  # 404, 429, 503, 504, empty/blocked reply
                 last_err = e
-                wait = 5 * (3 ** attempt)  # 5s, 15s, 45s — free tier is rate-limited
-                logger.warning(f"[{self.name}] Gemini call failed ({e}); retry in {wait}s")
-                time.sleep(wait)
+                if attempt + 1 < retries:
+                    wait = 5 * (attempt + 1)
+                    logger.warning(f"[{self.name}] {name} failed ({e}); trying next model in {wait}s")
+                    time.sleep(wait)
         raise RuntimeError(f"Gemini call failed after {retries} attempts: {last_err}")
 
     def ask_claude_json(self, system_prompt: str, user_message: str, max_tokens: int = 4096) -> dict | list:

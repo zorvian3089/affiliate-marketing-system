@@ -64,14 +64,15 @@ class ContentCreationAgent(BaseAgent):
             ]
 
         created = 0
+        failures = 0
         for niche in niche_data:
-            if created >= limit:
+            if created >= limit or failures >= 3:  # API is down: give up until the next run
                 break
             niche_products = [p for p in product_data if p["niche_id"] == niche["id"]]
             keywords = niche["keywords"][:10] if niche["keywords"] else []
 
             for keyword in keywords:
-                if created >= limit:
+                if created >= limit or failures >= 3:
                     break
                 if self._already_covered(keyword):
                     continue
@@ -80,8 +81,20 @@ class ContentCreationAgent(BaseAgent):
                 if piece:
                     self._save_content(piece, niche["id"])
                     created += 1
+                    failures = 0
+                    self._publish_now()  # show each article on the site as soon as it exists
+                else:
+                    failures += 1
 
         return {"articles_created": created}
+
+    @staticmethod
+    def _publish_now():
+        try:
+            from agents.static_site_agent import StaticSiteAgent
+            StaticSiteAgent().execute()
+        except Exception as e:
+            logger.error(f"Site rebuild failed: {e}")
 
     @staticmethod
     def _already_covered(keyword: str) -> bool:
@@ -114,11 +127,11 @@ class ContentCreationAgent(BaseAgent):
                 product_info += f"\nCons: {', '.join(p['cons'][:2])}"
 
         type_instructions = {
-            "product_review": f"Write a comprehensive honest product review for someone searching '{keyword}'. Include pros, cons, who it's for, verdict. At least 1500 words.",
-            "comparison": f"Write a detailed comparison article for someone searching '{keyword}'. Compare 3-4 top options with a clear recommendation. At least 1800 words.",
-            "best_of_list": f"Write a 'Best X' style article for someone searching '{keyword}'. Cover 7-10 options with clear descriptions, pros/cons, and buying advice. At least 2000 words.",
-            "how_to_guide": f"Write a practical how-to guide for someone searching '{keyword}'. Include step-by-step instructions and naturally recommend relevant tools/products. At least 1500 words.",
-            "buyer_guide": f"Write a comprehensive buyer's guide for someone searching '{keyword}'. Include what to look for, top recommendations, and FAQs. At least 1800 words.",
+            "product_review": f"Write a comprehensive honest product review for someone searching '{keyword}'. Include pros, cons, who it's for, verdict. About 1000 words.",
+            "comparison": f"Write a detailed comparison article for someone searching '{keyword}'. Compare 3-4 top options with a clear recommendation. About 1200 words.",
+            "best_of_list": f"Write a 'Best X' style article for someone searching '{keyword}'. Cover 5 options with clear descriptions, pros/cons, and buying advice. About 1200 words.",
+            "how_to_guide": f"Write a practical how-to guide for someone searching '{keyword}'. Include step-by-step instructions and naturally recommend relevant tools/products. About 1000 words.",
+            "buyer_guide": f"Write a comprehensive buyer's guide for someone searching '{keyword}'. Include what to look for, top recommendations, and FAQs. About 1100 words.",
         }
 
         prompt = f"""Niche: {niche['name']}

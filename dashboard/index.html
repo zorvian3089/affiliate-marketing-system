@@ -685,7 +685,8 @@ function toast(msg, type = 'info') {
 }
 
 // API
-const API_BASE = 'https://affiliate-marketing-system-7994.onrender.com';
+// Same origin when served by the app; set a full URL here only if hosting the dashboard elsewhere.
+const API_BASE = location.hostname.endsWith('vercel.app') ? 'https://affiliate-marketing-system-1.onrender.com' : '';
 function adminKey(force) {
   let k = '';
   try { k = localStorage.getItem('adminKey') || ''; } catch (e) {}

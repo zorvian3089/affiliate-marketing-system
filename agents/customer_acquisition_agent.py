@@ -91,7 +91,7 @@ Pros: {', '.join(product['pros'])}
 Cons: {', '.join(product['cons'])}
 Affiliate link: {hoplink}
 
-Write a 1800-word balanced, honest review that:
+Write a balanced, roughly 1100-word, honest review that:
 1. Ranks for "{keyword}" on Google
 2. Answers the reader's real question (does this work?) using only the facts above plus
    widely known general information — describe vendor claims as claims, say where independent
@@ -108,7 +108,7 @@ Return JSON:
   "meta_description": "compelling meta description 150 chars",
   "slug": "url-slug",
   "body": "full markdown article with ## headings, the affiliate link placed naturally as [Click here to visit {product['name']} official site]({hoplink}) — IMPORTANT: always close markdown links with )",
-  "word_count": 1800,
+  "word_count": 1100,
   "target_keyword": "{keyword}",
   "secondary_keywords": ["related keyword 1", "related keyword 2", "related keyword 3"]
 }}"""
