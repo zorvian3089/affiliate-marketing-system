@@ -29,11 +29,12 @@ from agents.telegram_agent import TelegramAgent
 from agents.indexnow_agent import IndexNowAgent
 from agents.tumblr_agent import TumblrAgent
 from agents.static_site_agent import StaticSiteAgent
+from agents.product_content_agent import ProductContentAgent
 from database.database import init_db
 from config.settings import (
     CONTENT_CREATION_INTERVAL, SOCIAL_POST_INTERVAL, EMAIL_CAMPAIGN_INTERVAL,
     ANALYTICS_INTERVAL, PRODUCT_DISCOVERY_INTERVAL, NICHE_RESEARCH_INTERVAL,
-    SEO_AUDIT_INTERVAL, LINK_CHECK_INTERVAL, ENABLE_STATIC_SITE, TARGET_NICHES
+    SEO_AUDIT_INTERVAL, LINK_CHECK_INTERVAL, ENABLE_STATIC_SITE, TARGET_NICHES, PROMOTE_OWN
 )
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,14 @@ class Orchestrator:
                 ("wordpress_publish", self._job_wordpress, 86400),
             ]
 
+        if PROMOTE_OWN:  # only what serves our own product; no affiliate research or auto-posting
+            jobs = [
+                ("product_content", self._job_product_content, 86400),
+                ("static_site", self._job_static_site, 3600 * 6),
+                ("email_sequences", self._job_email, EMAIL_CAMPAIGN_INTERVAL),
+                ("analytics", self._job_analytics, ANALYTICS_INTERVAL),
+            ]
+
         for job_id, func, interval_seconds in jobs:
             self.scheduler.add_job(
                 func,
@@ -117,6 +126,12 @@ class Orchestrator:
         ]
         if not ENABLE_STATIC_SITE:
             initial_jobs.append(("WordPress Publish", self._job_wordpress))
+        if PROMOTE_OWN:
+            initial_jobs = [
+                ("Static Site", self._job_static_site),
+                ("First Draft", self._job_product_content),
+                ("Analytics Snapshot", self._job_analytics),
+            ]
         for name, job in initial_jobs:
             try:
                 logger.info(f"  Bootstrap: {name}")
@@ -125,6 +140,9 @@ class Orchestrator:
                 logger.error(f"  Bootstrap failed for {name}: {e}")
 
     # ── Job wrappers ───────────────────────────────────────────────────────────
+
+    def _job_product_content(self):
+        self._safe_run("ProductContent", lambda: ProductContentAgent().run())
 
     def _job_static_site(self):
         self._safe_run("StaticSite", lambda: StaticSiteAgent().run())
@@ -236,6 +254,7 @@ class Orchestrator:
             "indexnow": self._job_indexnow,
             "tumblr": self._job_tumblr,
             "site": self._job_static_site,
+            "product_content": self._job_product_content,
         }
         job = agents.get(agent_name.lower())
         if not job:

@@ -84,9 +84,18 @@ TARGET_NICHES = [n.strip() for n in os.getenv("TARGET_NICHES", ",".join([
     "gardening homesteading",
 ])).split(",") if n.strip()]
 
+# SITE_MODE "getupsignal": the system markets our own product (drafts need approval at /review).
+# SITE_MODE "affiliate": the earlier niche/affiliate behaviour.
+SITE_MODE = os.getenv("SITE_MODE", "getupsignal")
+PROMOTE_OWN = SITE_MODE == "getupsignal"
+PRODUCT_URL = os.getenv("PRODUCT_URL", "https://getupsignal.com").rstrip("/")
+PRODUCT_NICHE = "website monitoring"
+if PROMOTE_OWN:
+    TARGET_NICHES = [PRODUCT_NICHE]
+
 # First-party static site (served by this app at /blog, regenerated from the DB)
 ENABLE_STATIC_SITE = os.getenv("ENABLE_STATIC_SITE", "true").lower() == "true"
-SITE_NAME = os.getenv("SITE_NAME", "Trusted Picks Guide")
+SITE_NAME = os.getenv("SITE_NAME", "GetUpSignal Guides" if PROMOTE_OWN else "Trusted Picks Guide")
 SITE_URL = os.getenv("SITE_URL", f"{BASE_URL.rstrip('/')}/blog").rstrip("/")
 
 CONTENT_LANGUAGES = ["en"]

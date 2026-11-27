@@ -19,7 +19,7 @@ from pathlib import Path
 from agents.base_agent import BaseAgent
 from database.database import get_db
 from database.models import ContentPiece, ContentStatus, Product, Niche, PUBLISHABLE_TYPES
-from config.settings import BASE_DIR, BASE_URL, SITE_NAME, SITE_URL, ENABLE_STATIC_SITE, TARGET_NICHES
+from config.settings import BASE_DIR, BASE_URL, SITE_NAME, SITE_URL, ENABLE_STATIC_SITE, TARGET_NICHES, PROMOTE_OWN, PRODUCT_URL
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +51,17 @@ DISCLOSURE = ('<p class="disclosure"><strong>Affiliate disclosure:</strong> some
               'changes our assessment. <a href="{u}/disclosure/">Learn more</a>.</p>')
 
 
+if PROMOTE_OWN:  # we are the maker of the product: say so plainly
+    DISCLOSURE = ('<p class="disclosure"><strong>Disclosure:</strong> this site is published by the makers of '
+                  'GetUpSignal, and our guides may mention it. <a href="{u}/disclosure/">Learn more</a>.</p>')
+SIGNUP_BLURB = "Occasional practical monitoring guides." if PROMOTE_OWN else "Occasional, useful buying guides."
+TAGLINE = "Practical guides to keeping websites online." if PROMOTE_OWN else "Independent buying guides and reviews."
+
+
 def _signup_form(niche: str) -> str:
     return f"""<form class="signup" id="signup">
-<strong>Get our best picks by email</strong>
-<p class="meta">Occasional, useful buying guides. Unsubscribe any time.</p>
+<strong>Get new guides by email</strong>
+<p class="meta">{SIGNUP_BLURB} Unsubscribe any time.</p>
 <input type="email" name="email" placeholder="you@example.com" required>
 <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
 <button type="submit">Subscribe</button> <span id="signup-msg" class="meta"></span>
@@ -128,7 +135,8 @@ class StaticSiteAgent(BaseAgent):
                 .join(Niche, ContentPiece.niche_id == Niche.id)
                 .filter(
                     Niche.name.in_(TARGET_NICHES),  # off-focus (health) content never goes live
-                    ContentPiece.status == ContentStatus.draft,
+                    # own-product mode publishes only what was approved at /review
+                    ContentPiece.status == (ContentStatus.scheduled if PROMOTE_OWN else ContentStatus.draft),
                     ContentPiece.published_url == None,  # noqa: E711
                     ContentPiece.content_type.in_(PUBLISHABLE_TYPES),
                     ContentPiece.body != None,  # noqa: E711
@@ -213,7 +221,7 @@ class StaticSiteAgent(BaseAgent):
 
         def _rel(m):  # mark commercial links
             href = m.group(2)
-            if href.startswith(SITE_URL) or href.startswith("/") or href.startswith("#"):
+            if href.startswith((SITE_URL, PRODUCT_URL, "/", "#")):
                 return m.group(0)
             attrs = re.sub(r'\srel="[^"]*"', "", m.group(1) + m.group(3))
             return f'<a {attrs.strip()} href="{href}" rel="sponsored nofollow noopener" target="_blank">'
@@ -236,11 +244,17 @@ class StaticSiteAgent(BaseAgent):
             f'<div class="meta">{it["date"].strftime("%b %d, %Y")} · {e(it["niche"])}</div>'
             f'<p>{e(it["desc"])}</p></div>' for it in items
         ) or "<p>First guides are on the way — subscribe below.</p>"
-        body = (f"<h1>{e(SITE_NAME)}</h1><p>Independent buying guides and reviews.</p>"
+        body = (f"<h1>{e(SITE_NAME)}</h1><p>{TAGLINE}</p>"
                 f"{DISCLOSURE.format(u=SITE_URL)}{cards}{_signup_form('general')}")
-        return _page(SITE_NAME, f"{SITE_NAME}: independent buying guides and reviews.", f"{SITE_URL}/", body)
+        return _page(SITE_NAME, f"{SITE_NAME}: {TAGLINE}", f"{SITE_URL}/", body)
 
     def _render_disclosure(self) -> str:
+        if PROMOTE_OWN:
+            body = (f"<h1>Disclosure</h1><p>{html.escape(SITE_NAME)} is published by the makers of "
+                    f'<a href="{html.escape(PRODUCT_URL)}">GetUpSignal</a>, a website monitoring service. When a guide '
+                    "mentions it, we are recommending our own product. Guides are drafted with AI help and "
+                    "reviewed before publishing.</p>")
+            return _page("Disclosure", "Who publishes this site.", f"{SITE_URL}/disclosure/", body)
         body = (f"<h1>Affiliate disclosure</h1><p>{html.escape(SITE_NAME)} participates in affiliate programs. "
                 "When you click a link marked as sponsored and make a purchase, we may earn a commission at no "
                 "additional cost to you. Commissions do not change what we write: we describe vendor claims as "

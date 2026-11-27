@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from config.settings import ADMIN_API_KEY
 
 _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-_PROTECTED_GET_PREFIXES = ("/api/agents/bluesky/debug", "/api/agents/clickbank/hoplinks")
+_PROTECTED_GET_PREFIXES = ("/api/review", "/api/agents/bluesky/debug", "/api/agents/clickbank/hoplinks")
 _PUBLIC_WRITE_PATHS = ("/api/subscribe",)  # called from the public static site
 _LOCAL = {"127.0.0.1", "::1", "localhost"}
 
