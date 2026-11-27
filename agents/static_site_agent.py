@@ -13,12 +13,13 @@ import html
 import json
 import logging
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from agents.base_agent import BaseAgent
 from database.database import get_db
-from database.models import ContentPiece, ContentStatus, Product, PUBLISHABLE_TYPES
-from config.settings import BASE_DIR, BASE_URL, SITE_NAME, SITE_URL, ENABLE_STATIC_SITE
+from database.models import ContentPiece, ContentStatus, Product, Niche, PUBLISHABLE_TYPES
+from config.settings import BASE_DIR, BASE_URL, SITE_NAME, SITE_URL, ENABLE_STATIC_SITE, TARGET_NICHES
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,9 @@ class StaticSiteAgent(BaseAgent):
         with get_db() as db:
             drafts = (
                 db.query(ContentPiece)
+                .join(Niche, ContentPiece.niche_id == Niche.id)
                 .filter(
+                    Niche.name.in_(TARGET_NICHES),  # off-focus (health) content never goes live
                     ContentPiece.status == ContentStatus.draft,
                     ContentPiece.published_url == None,  # noqa: E711
                     ContentPiece.content_type.in_(PUBLISHABLE_TYPES),
@@ -153,7 +156,9 @@ class StaticSiteAgent(BaseAgent):
         with get_db() as db:
             pieces = (
                 db.query(ContentPiece)
+                .join(Niche, ContentPiece.niche_id == Niche.id)
                 .filter(
+                    Niche.name.in_(TARGET_NICHES),
                     ContentPiece.status == ContentStatus.published,
                     ContentPiece.published_url.like(f"{SITE_URL}/%"),
                 )
@@ -173,6 +178,7 @@ class StaticSiteAgent(BaseAgent):
                 "niche": niche_names[p.id],
             } for p in pieces]
 
+        shutil.rmtree(SITE_DIR / "articles", ignore_errors=True)  # drop pages no longer listed
         SITE_DIR.mkdir(parents=True, exist_ok=True)
         for it in items:
             self._write(f"{it['path']}/index.html", self._render_article(it, products))

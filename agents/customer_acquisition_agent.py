@@ -8,6 +8,7 @@ from agents.base_agent import BaseAgent
 from agents.clickbank_agent import ClickBankAgent, CLICKBANK_TOP_PRODUCTS
 from database.database import get_db
 from database.models import ContentPiece, Niche, ContentStatus
+from config.settings import TARGET_NICHES
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,11 @@ class CustomerAcquisitionAgent(BaseAgent):
         results["seo_articles"] = self._create_seo_buyer_content()
         results["youtube_scripts"] = self._create_youtube_scripts()
         return results
+
+    def _focus_products(self) -> list[dict]:
+        """Products in our target niches that have their OWN verified link (never a stand-in)."""
+        return [p for p in CLICKBANK_TOP_PRODUCTS
+                if p["niche"] in TARGET_NICHES and p["vendor_id"] in self.ENCRYPTED_HOPLINKS]
 
     @staticmethod
     def _exists(keyword: str, content_type: str) -> bool:
@@ -56,7 +62,7 @@ class CustomerAcquisitionAgent(BaseAgent):
             "{product} vs competitors",
         ]
 
-        for product in CLICKBANK_TOP_PRODUCTS[:10]:  # Top 10 products first
+        for product in self._focus_products():
             if created >= 1:  # 1 new review per cycle keeps us inside free-tier limits
                 break
             keyword = f"{product['name']} review — does it really work?"
@@ -75,10 +81,11 @@ class CustomerAcquisitionAgent(BaseAgent):
         "javaburn":  "https://45ac8nryoc61fg08luqaycxi1a.hop.clickbank.net",
         "resurge":   "https://45ac8nryoc61fg08luqaycxi1a.hop.clickbank.net",
     }
-    _FALLBACK_LINK = "https://b5f4bnw7xlx9ol74p5ymq6tuf8.hop.clickbank.net"
 
     def _write_seo_article(self, product: dict, keyword: str) -> dict | None:
-        hoplink = self.ENCRYPTED_HOPLINKS.get(product["vendor_id"], self._FALLBACK_LINK)
+        hoplink = self.ENCRYPTED_HOPLINKS.get(product["vendor_id"])
+        if not hoplink:  # never send readers to a different product's offer
+            return None
 
         prompt = f"""Write a complete SEO affiliate review article.
 
@@ -201,7 +208,7 @@ Return JSON array:
     def _create_youtube_scripts(self) -> int:
         """Generate YouTube video scripts for top products."""
         scripts_created = 0
-        for product in CLICKBANK_TOP_PRODUCTS[:5]:
+        for product in self._focus_products():
             if scripts_created >= 1:
                 break
             if self._exists(f"{product['name']} youtube", "youtube_script"):

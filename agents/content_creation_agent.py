@@ -134,7 +134,8 @@ class ContentCreationAgent(BaseAgent):
             "buyer_guide": f"Write a comprehensive buyer's guide for someone searching '{keyword}'. Include what to look for, top recommendations, and FAQs. About 1100 words.",
         }
 
-        prompt = f"""Niche: {niche['name']}
+        prompt = f"""Current year: {datetime.utcnow().year} (use this year if a title mentions one)
+Niche: {niche['name']}
 Target keyword: "{keyword}"
 Content type: {content_type}
 {product_info}
