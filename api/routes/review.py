@@ -5,6 +5,7 @@ The /review page is a public shell; all data and actions under /api/review need 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from agents.static_site_agent import StaticSiteAgent, _markdown
+from agents.product_content_agent import ProductContentAgent
 from database.database import get_db
 from database.models import ContentPiece, ContentStatus, Niche
 from config.settings import PRODUCT_NICHE
@@ -20,6 +21,15 @@ def list_drafts():
                 .order_by(ContentPiece.created_at.asc()).all())
         return [{"id": r.id, "title": r.title, "words": r.word_count, "html": _markdown(r.body or "")}
                 for r in rows]
+
+
+@router.post("/api/review/generate")
+def generate_now():
+    """Write one draft on demand and report the real error to the (authenticated) owner."""
+    try:
+        return ProductContentAgent().run()
+    except Exception as e:
+        return {"created": 0, "reason": f"{type(e).__name__}: {e}"[:600]}
 
 
 def _set_status(content_id: int, status: ContentStatus):
@@ -50,7 +60,8 @@ def review_page():
 iframe{width:100%;height:420px;border:1px solid #ccc;border-radius:8px}
 button{padding:10px 18px;margin:8px 8px 28px 0;border:0;border-radius:6px;cursor:pointer;color:#fff}
 .ok{background:#0f766e}.no{background:#b91c1c}</style></head><body>
-<h2>Drafts waiting for approval</h2><div id="list">Loading…</div>
+<h2>Drafts waiting for approval</h2>
+<button class="ok" id="gen">Write a draft now</button><p id="msg"></p><div id="list">Loading…</div>
 <script>
 let key = '';
 async function call(path, method) {
@@ -80,5 +91,13 @@ async function load() {
     }
   } catch (e) { box.textContent = e.message; }
 }
+document.getElementById('gen').onclick = async (ev) => {
+  const b = ev.target, m = document.getElementById('msg');
+  b.disabled = true; m.textContent = 'Writing… this can take a few minutes. Keep this page open.';
+  try { const r = await call('/api/review/generate', 'POST');
+    m.textContent = r.created ? 'Draft written: ' + r.title : 'No draft: ' + r.reason; load(); }
+  catch (e) { m.textContent = e.message; }
+  b.disabled = false;
+};
 load();
 </script></body></html>"""

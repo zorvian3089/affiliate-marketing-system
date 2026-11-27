@@ -72,25 +72,37 @@ class ProductContentAgent(BaseAgent):
         if not topic:
             return {"created": 0, "reason": "all topics written — add more to TOPICS"}
 
-        piece = self.ask_claude_json(SYSTEM_PROMPT, f"""Current year: {datetime.utcnow().year}.
+        # Plain text, not JSON: long markdown inside JSON strings often fails to parse.
+        reply = self.ask_claude(SYSTEM_PROMPT, f"""Current year: {datetime.utcnow().year}.
 Write a guide of about 900 words answering: "{topic}".
 
-Return JSON:
-{{"title": "clear title", "meta_description": "under 155 characters",
-  "body": "markdown with ## headings"}}""", max_tokens=8192)
+Reply in exactly this format, with no code fence around it:
+TITLE: <clear title on one line>
+META: <description under 155 characters on one line>
 
-        body = piece.get("body", "")
+<the guide in markdown with ## headings>""", max_tokens=8192)
+
+        title, meta, body = self._parse(reply, topic)
         if len(body.split()) < 300:
-            return {"created": 0, "reason": "reply too short, will retry next run"}
-        title = (piece.get("title") or topic.capitalize())[:299]
+            return {"created": 0, "reason": f"reply too short ({len(body.split())} words), try again"}
         slug = re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")[:90]
         with get_db() as db:
             db.add(ContentPiece(
                 niche_id=niche_id, title=title, slug=slug, content_type="how_to_guide", body=body,
-                meta_description=(piece.get("meta_description") or "")[:159], target_keyword=topic,
+                meta_description=meta[:159], target_keyword=topic,
                 word_count=len(body.split()), status=ContentStatus.draft,
             ))
         return {"created": 1, "title": title, "review_at": "/review"}
+
+    @staticmethod
+    def _parse(reply: str, topic: str) -> tuple[str, str, str]:
+        text = re.sub(r"^```(?:markdown)?\s*|\s*```$", "", reply.strip())
+        title = re.search(r"^\W*TITLE:\s*(.+)$", text, re.M)
+        meta = re.search(r"^\W*META:\s*(.+)$", text, re.M)
+        body = re.sub(r"^\W*(TITLE|META):.*$
+?", "", text, count=2, flags=re.M).strip()
+        clean = lambda m: m.group(1).strip().strip("*# ") if m else ""
+        return (clean(title) or topic.capitalize())[:299], clean(meta), body
 
     @staticmethod
     def _ensure_niche() -> int:
