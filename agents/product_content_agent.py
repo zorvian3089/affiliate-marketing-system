@@ -99,8 +99,7 @@ META: <description under 155 characters on one line>
         text = re.sub(r"^```(?:markdown)?\s*|\s*```$", "", reply.strip())
         title = re.search(r"^\W*TITLE:\s*(.+)$", text, re.M)
         meta = re.search(r"^\W*META:\s*(.+)$", text, re.M)
-        body = re.sub(r"^\W*(TITLE|META):.*$
-?", "", text, count=2, flags=re.M).strip()
+        body = re.sub(r"^\W*(TITLE|META):.*$\n?", "", text, count=2, flags=re.M).strip()
         clean = lambda m: m.group(1).strip().strip("*# ") if m else ""
         return (clean(title) or topic.capitalize())[:299], clean(meta), body
 
